@@ -1,9 +1,11 @@
-﻿using Aimmy2.AILogic;
+using Aimmy2.AILogic;
 using Aimmy2.Class;
 using Aimmy2.UILibrary;
 using Other;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using UILibrary;
 using Visuality;
 using LogLevel = Other.LogManager.LogLevel;
@@ -231,7 +233,7 @@ namespace Aimmy2.Controls
                     _mainWindow.AddDropdownItem(d, "Best Confidence");
                     UpdateTargetClassDropdown(d);
                 }, tooltip: "Which type of target to aim at. Best Confidence picks the most certain detection.")
-                .AddSlider("AI Minimum Confidence", "% Confidence", 1, 1, 1, 100, s =>
+                .AddSlider("AI Minimum Confidence", "%", 1, 1, 1, 100, s =>
                 {
                     uiManager.S_AIMinimumConfidence = s;
                     s.Slider.PreviewMouseLeftButtonUp += (sender, e) =>
@@ -366,6 +368,66 @@ namespace Aimmy2.Controls
             arrowButton.Visibility = Visibility.Visible;
 
             ThemeMenu.Children.Add(uiManager.ThemeColorWheel);
+
+
+
+            // NOTE: Beta UI is temporarily hidden due to performance issues.
+            // builder.AddToggle("Beta UI", t => uiManager.T_BetaUI = t,
+            //     tooltip: "Enable experimental UI improvements and visual enhancements.");
+
+            builder.AddDropdown("UI Font", d =>
+            {
+                uiManager.D_UI_Font = d;
+                
+                var systemFonts = System.Windows.Media.Fonts.SystemFontFamilies
+                    .Select(f => f.Source)
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .ToList();
+
+                if (!systemFonts.Contains("Atkinson Hyperlegible"))
+                {
+                    systemFonts.Add("Atkinson Hyperlegible");
+                }
+
+                var sortedFonts = systemFonts.OrderBy(f => f).ToList();
+
+                foreach (var font in sortedFonts)
+                {
+                    d.DropdownBox.Items.Add(new ComboBoxItem
+                    {
+                        Content = font,
+                        FontFamily = font == "Atkinson Hyperlegible"
+                            ? new System.Windows.Media.FontFamily("pack://application:,,,/Graphics/Fonts/#Atkinson Hyperlegible")
+                            : new System.Windows.Media.FontFamily(font),
+                        Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 0, 0))
+                    });
+                }
+
+                // Load saved value
+                string savedFont = "Atkinson Hyperlegible";
+                if (Dictionary.dropdownState.TryGetValue("UI Font", out var savedVal) && savedVal != null)
+                    savedFont = savedVal.ToString() ?? "Atkinson Hyperlegible";
+
+                for (int i = 0; i < d.DropdownBox.Items.Count; i++)
+                {
+                    if ((d.DropdownBox.Items[i] as ComboBoxItem)?.Content?.ToString() == savedFont)
+                    {
+                        d.DropdownBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                d.DropdownBox.SelectionChanged += (s, e) =>
+                {
+                    var selected = (d.DropdownBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                    if (selected != null)
+                    {
+                        Dictionary.dropdownState["UI Font"] = selected;
+                        _mainWindow?.ApplyFontToUI(selected);
+                    }
+                };
+            }, tooltip: "Change the font used throughout the application.");
+
             builder.AddSeparator();
             ApplyLastButtonStyling(ThemeMenuPanel);
         }
@@ -394,7 +456,7 @@ namespace Aimmy2.Controls
             {
                 try
                 {
-                    LogManager.Log(LogLevel.Info, $"AI focus switched to Display {e.DisplayIndex + 1} ({e.Bounds.Width}x{e.Bounds.Height})", true);
+                    LogManager.Log(LogLevel.Info, $"AI focus switched to Display {e.DisplayIndex + 1} ({e.Bounds.Width}x{e.Bounds.Height})", false);
                     UpdateDisplayRelatedSettings(e);
                 }
                 catch (Exception ex)
@@ -534,6 +596,12 @@ namespace Aimmy2.Controls
             var toggle = new AToggle(title, tooltip);
             _mainWindow!.toggleInstances[title] = toggle;
 
+            // Ensure key exists
+            if (!Dictionary.toggleState.ContainsKey(title))
+            {
+                Dictionary.toggleState[title] = false;
+            }
+
             // Set initial state
             if (Dictionary.toggleState[title])
                 toggle.EnableSwitch();
@@ -621,6 +689,7 @@ namespace Aimmy2.Controls
             {
                 var toggle = _parent.CreateToggle(title, tooltip);
                 configure?.Invoke(toggle);
+                toggle.HorizontalAlignment = HorizontalAlignment.Stretch;
                 _panel.Children.Add(toggle);
                 return this;
             }
@@ -639,6 +708,7 @@ namespace Aimmy2.Controls
             {
                 var slider = _parent.CreateSlider(title, label, frequency, buttonSteps, min, max, tooltip);
                 configure?.Invoke(slider);
+                slider.HorizontalAlignment = HorizontalAlignment.Stretch;
                 _panel.Children.Add(slider);
                 return this;
             }

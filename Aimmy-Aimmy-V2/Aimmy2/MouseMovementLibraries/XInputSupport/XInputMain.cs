@@ -19,14 +19,14 @@ namespace MouseMovementLibraries.XInputSupport
         private static extern uint XInputSetState(uint dwUserIndex, ref XINPUT_VIBRATION pVibration);
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct XINPUT_STATE
+        public struct XINPUT_STATE
         {
             public uint dwPacketNumber;
             public XINPUT_GAMEPAD Gamepad;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct XINPUT_GAMEPAD
+        public struct XINPUT_GAMEPAD
         {
             public ushort wButtons;
             public byte bLeftTrigger;
@@ -74,44 +74,90 @@ namespace MouseMovementLibraries.XInputSupport
         private bool _isAimActive = false;
         private uint _controllerIndex = 0;
 
+        public static uint? TargetIndex { get; set; } = null;
+        public static uint? IgnoredIndex { get; set; } = null;
+
         public bool IsConnected { get; private set; }
         public short CurrentRightStickX { get; private set; }
         public short CurrentRightStickY { get; private set; }
+        public short CurrentLeftStickX { get; private set; }
+        public short CurrentLeftStickY { get; private set; }
 
         /// <summary>
         /// Check if a controller is connected and ready
         /// </summary>
-        public bool Load()
+        public bool Load(bool showNotification = true)
         {
             try
             {
                 // Try XInput first (native Xbox, Xbox-compatible controllers)
-                var state = GetState();
-                if (state == 0)
+                for (uint i = 0; i < 4; i++)
                 {
-                    IsConnected = true;
-                    LogManager.Log(LogManager.LogLevel.Info, "XInput controller connected", false);
-                    return true;
+                    if (IgnoredIndex.HasValue && i == IgnoredIndex.Value) continue;
+                    if (TargetIndex.HasValue && i != TargetIndex.Value) continue;
+
+                    _controllerIndex = i;
+                    var state = GetState();
+                    if (state == 0)
+                    {
+                        IsConnected = true;
+                        LogManager.Log(LogManager.LogLevel.Info, $"XInput controller connected at index {i}", false);
+                        return true;
+                    }
                 }
 
                 // Try alternative XInput library versions
-                if (TryOtherXInputVersion(out state))
+                for (uint i = 0; i < 4; i++)
                 {
-                    IsConnected = true;
-                    LogManager.Log(LogManager.LogLevel.Info, "XInput controller connected (alternate driver)", false);
-                    return true;
+                    if (IgnoredIndex.HasValue && i == IgnoredIndex.Value) continue;
+                    if (TargetIndex.HasValue && i != TargetIndex.Value) continue;
+
+                    _controllerIndex = i;
+                    if (TryOtherXInputVersion(out var stateResult))
+                    {
+                        IsConnected = true;
+                        LogManager.Log(LogManager.LogLevel.Info, $"XInput controller connected (alternate driver) at index {i}", false);
+                        return true;
+                    }
                 }
 
-                IsConnected = false;
-                LogManager.Log(LogManager.LogLevel.Warning, "No XInput controller detected. For PS5 controllers, please install DS4Windows (https://ds4-windows.com) or use Steam Input.", true);
+                // If target index is forced but not connected, fail explicitly
+                if (TargetIndex.HasValue)
+                {
+                    LogManager.Log(LogManager.LogLevel.Warning, $"XInput Target Controller (Index {TargetIndex.Value + 1}) is not connected.", showNotification);
+                    return false;
+                }
+
+                if (showNotification)
+                {
+                    LogManager.Log(LogManager.LogLevel.Warning,
+                        "No XInput controller detected.\n\n" +
+                        "Make sure your Xbox or compatible controller is turned on and connected via USB or Bluetooth.\n" +
+                        "Click 'Controller Output Mode' to retry.", true);
+                }
                 return false;
             }
             catch (Exception ex)
             {
-                LogManager.Log(LogManager.LogLevel.Error, $"XInput load error: {ex.Message}", true);
+                LogManager.Log(LogManager.LogLevel.Error, $"XInput load error: {ex.Message}", showNotification);
                 IsConnected = false;
                 return false;
             }
+        }
+
+        public System.Collections.Generic.Dictionary<string, string> GetAvailableControllers()
+        {
+            var list = new System.Collections.Generic.Dictionary<string, string>();
+            for (uint i = 0; i < 4; i++)
+            {
+                if (IgnoredIndex.HasValue && i == IgnoredIndex.Value) continue;
+                _controllerIndex = i;
+                if (GetState() == 0 || TryOtherXInputVersion(out _))
+                {
+                    list.Add($"xinput_{i}", $"XInput Controller {i + 1}");
+                }
+            }
+            return list;
         }
 
         /// <summary>
@@ -170,6 +216,8 @@ namespace MouseMovementLibraries.XInputSupport
                     // Update current stick positions
                     CurrentRightStickX = state.Gamepad.sThumbRX;
                     CurrentRightStickY = state.Gamepad.sThumbRY;
+                    CurrentLeftStickX = state.Gamepad.sThumbLX;
+                    CurrentLeftStickY = state.Gamepad.sThumbLY;
                 }
                 return result;
             }
@@ -203,6 +251,24 @@ namespace MouseMovementLibraries.XInputSupport
         }
 
         /// <summary>
+        /// Get the full gamepad state for passthrough
+        /// </summary>
+        public XINPUT_GAMEPAD? GetFullState()
+        {
+            try
+            {
+                var result = XInputGetState(_controllerIndex, out var state);
+                if (result == 0)
+                    return state.Gamepad;
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Move the right stick (aiming) using XInput
         /// This modifies the stick position directly without actual mouse movement
         /// </summary>
@@ -217,9 +283,9 @@ namespace MouseMovementLibraries.XInputSupport
                 short scaledX = (short)(x * 218); // 32767 / 150 ≈ 218
                 short scaledY = (short)(y * 218);
 
-                // Apply deadzone
-                if (Math.Abs(scaledX) < LEFT_THUMB_DEADZONE) scaledX = 0;
-                if (Math.Abs(scaledY) < LEFT_THUMB_DEADZONE) scaledY = 0;
+                // Apply deadzone (right stick uses RIGHT_THUMB_DEADZONE)
+                if (Math.Abs(scaledX) < RIGHT_THUMB_DEADZONE) scaledX = 0;
+                if (Math.Abs(scaledY) < RIGHT_THUMB_DEADZONE) scaledY = 0;
 
                 _lastRightStickX = scaledX;
                 _lastRightStickY = scaledY;

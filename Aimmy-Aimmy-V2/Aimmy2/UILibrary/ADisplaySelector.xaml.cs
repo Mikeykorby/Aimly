@@ -1,5 +1,6 @@
-﻿using Aimmy2.Class;
+using Aimmy2.Class;
 using Aimmy2.Theme;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,6 +17,12 @@ namespace Aimmy2.UILibrary
         private List<DisplayInfo> _displays = new List<DisplayInfo>();
         private int _selectedDisplayIndex = 0;
 
+        // Store original XAML values for reverting
+        private Brush? _origBackground;
+        private Brush? _origBorderBrush;
+        private Thickness _origBorderThickness;
+        private CornerRadius _origCornerRadius;
+
         public ADisplaySelector()
         {
             InitializeComponent();
@@ -24,17 +31,36 @@ namespace Aimmy2.UILibrary
             // Subscribe to theme and display changes
             ThemeManager.ThemeChanged += OnThemeChanged;
             DisplayManager.DisplayChanged += OnDisplayManagerChanged;
+            ThemeManager.BetaUIStateChanged += OnBetaUIStateChanged;
         }
 
         private void ADisplaySelector_Loaded(object sender, RoutedEventArgs e)
         {
+            CaptureOriginalValues();
             RefreshDisplays();
+        }
+
+        private void CaptureOriginalValues()
+        {
+            _origBackground = DisplaySelectorBorder.Background;
+            _origBorderBrush = DisplaySelectorBorder.BorderBrush;
+            _origBorderThickness = DisplaySelectorBorder.BorderThickness;
+            _origCornerRadius = DisplaySelectorBorder.CornerRadius;
         }
 
         private void OnThemeChanged(object? sender, Color newThemeColor)
         {
             // Update all display visuals when theme changes
             UpdateUI();
+        }
+
+        private void OnBetaUIStateChanged(object? sender, bool isBetaUI)
+        {
+            Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                ApplyContainerStyle();
+                RefreshDisplays(); // Redraw displays to pick up changes in border/monitor visuals
+            });
         }
 
         private void OnDisplayManagerChanged(object? sender, DisplayChangedEventArgs e)
@@ -48,6 +74,28 @@ namespace Aimmy2.UILibrary
                     RefreshDisplays(); // This will update the UI
                 }
             });
+        }
+
+        private bool IsBetaUIEnabled => Dictionary.toggleState.TryGetValue("Beta UI", out var val) && val is bool b && b;
+
+         private void ApplyContainerStyle()
+        {
+            if (IsBetaUIEnabled)
+            {
+                var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+                DisplaySelectorTitle.Foreground = new SolidColorBrush(scheme.OnSurface);
+                CurrentDisplayInfo.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+            }
+            else
+            {
+                DisplaySelectorBorder.Background = _origBackground;
+                DisplaySelectorBorder.BorderBrush = _origBorderBrush;
+                DisplaySelectorBorder.BorderThickness = _origBorderThickness;
+                DisplaySelectorBorder.CornerRadius = _origCornerRadius;
+
+                DisplaySelectorTitle.Foreground = new SolidColorBrush(Color.FromArgb(0xDD, 0xFF, 0xFF, 0xFF));
+                CurrentDisplayInfo.Foreground = new SolidColorBrush(Color.FromArgb(0xBB, 0xFF, 0xFF, 0xFF));
+            }
         }
 
         public void RefreshDisplays()
@@ -72,17 +120,31 @@ namespace Aimmy2.UILibrary
 
         private void CreateDisplayVisual(DisplayInfo display)
         {
+            bool isBeta = IsBetaUIEnabled;
+            var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+
             // Create container
             var container = new Border
             {
                 Margin = new Thickness(5),
-                Background = new SolidColorBrush(Color.FromArgb(51, 60, 60, 60)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(63, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(5),
                 Cursor = Cursors.Hand,
                 Tag = display.Index
             };
+
+            if (isBeta)
+            {
+                container.Background = new SolidColorBrush(scheme.SurfaceContainer);
+                container.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                container.BorderThickness = new Thickness(1);
+                container.CornerRadius = new CornerRadius(12);
+            }
+            else
+            {
+                container.Background = new SolidColorBrush(Color.FromArgb(51, 60, 60, 60));
+                container.BorderBrush = new SolidColorBrush(Color.FromArgb(63, 255, 255, 255));
+                container.BorderThickness = new Thickness(1);
+                container.CornerRadius = new CornerRadius(5);
+            }
 
             // Create inner grid
             var grid = new Grid();
@@ -92,25 +154,44 @@ namespace Aimmy2.UILibrary
             {
                 Width = 50,
                 Height = 35,
-                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
-                BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(3),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 5, 0, 25)
             };
+
+            if (isBeta)
+            {
+                monitorBorder.Background = new SolidColorBrush(Color.FromArgb(15, scheme.OnSurface.R, scheme.OnSurface.G, scheme.OnSurface.B));
+                monitorBorder.BorderBrush = new SolidColorBrush(scheme.Outline);
+                monitorBorder.BorderThickness = new Thickness(2);
+                monitorBorder.CornerRadius = new CornerRadius(4);
+            }
+            else
+            {
+                monitorBorder.Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255));
+                monitorBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255));
+                monitorBorder.BorderThickness = new Thickness(2);
+                monitorBorder.CornerRadius = new CornerRadius(3);
+            }
 
             // Add a stand for the monitor
             var stand = new Rectangle
             {
                 Width = 20,
                 Height = 8,
-                Fill = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 35, 0, 0)
             };
+
+            if (isBeta)
+            {
+                stand.Fill = new SolidColorBrush(scheme.Outline);
+            }
+            else
+            {
+                stand.Fill = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255));
+            }
 
             // Display number
             var displayNumber = new TextBlock
@@ -119,33 +200,58 @@ namespace Aimmy2.UILibrary
                 FontFamily = (FontFamily)FindResource("Atkinson Hyperlegible"),
                 FontSize = 16,
                 FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromArgb(221, 255, 255, 255)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 15)
+                Margin = new Thickness(0, 0, 0, 15),
+                Tag = "DisplayNumber"
             };
+
+            if (isBeta)
+            {
+                displayNumber.Foreground = new SolidColorBrush(scheme.OnSurface);
+            }
+            else
+            {
+                displayNumber.Foreground = new SolidColorBrush(Color.FromArgb(221, 255, 255, 255));
+            }
 
             // Primary indicator
             if (display.IsPrimary)
             {
                 var primaryBadge = new Border
                 {
-                    Background = new SolidColorBrush(ThemeManager.ThemeColor),
                     CornerRadius = new CornerRadius(3),
                     Padding = new Thickness(4, 2, 4, 2),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Margin = new Thickness(0, 0, 0, 5),
-                    Tag = "PrimaryBadge" // Tag for identification during updates
+                    Tag = "PrimaryBadge"
                 };
+
+                if (isBeta)
+                {
+                    primaryBadge.Background = new SolidColorBrush(scheme.Primary);
+                }
+                else
+                {
+                    primaryBadge.Background = new SolidColorBrush(ThemeManager.ThemeColor);
+                }
 
                 var primaryText = new TextBlock
                 {
                     Text = "Primary",
                     FontFamily = (FontFamily)FindResource("Atkinson Hyperlegible"),
-                    FontSize = 9,
-                    Foreground = Brushes.White
+                    FontSize = 9
                 };
+
+                if (isBeta)
+                {
+                    primaryText.Foreground = new SolidColorBrush(scheme.OnPrimary);
+                }
+                else
+                {
+                    primaryText.Foreground = Brushes.White;
+                }
 
                 primaryBadge.Child = primaryText;
                 grid.Children.Add(primaryBadge);
@@ -168,13 +274,9 @@ namespace Aimmy2.UILibrary
 
         private void UpdateGridLayout()
         {
-            // Adjust grid layout based on number of displays
             switch (_displays.Count)
             {
                 case 0:
-                    DisplayGrid.Rows = 1;
-                    DisplayGrid.Columns = 1;
-                    break;
                 case 1:
                     DisplayGrid.Rows = 1;
                     DisplayGrid.Columns = 1;
@@ -199,7 +301,15 @@ namespace Aimmy2.UILibrary
         {
             if (sender is Border border && (int)border.Tag != _selectedDisplayIndex)
             {
-                border.Background = new SolidColorBrush(Color.FromArgb(77, 60, 60, 60));
+                if (IsBetaUIEnabled)
+                {
+                    var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+                    border.Background = new SolidColorBrush(scheme.SurfaceContainerHighest);
+                }
+                else
+                {
+                    border.Background = new SolidColorBrush(Color.FromArgb(77, 60, 60, 60));
+                }
             }
         }
 
@@ -207,7 +317,15 @@ namespace Aimmy2.UILibrary
         {
             if (sender is Border border && (int)border.Tag != _selectedDisplayIndex)
             {
-                border.Background = new SolidColorBrush(Color.FromArgb(51, 60, 60, 60));
+                if (IsBetaUIEnabled)
+                {
+                    var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+                    border.Background = new SolidColorBrush(scheme.SurfaceContainer);
+                }
+                else
+                {
+                    border.Background = new SolidColorBrush(Color.FromArgb(51, 60, 60, 60));
+                }
             }
         }
 
@@ -224,7 +342,6 @@ namespace Aimmy2.UILibrary
         {
             if (index == _selectedDisplayIndex || index >= _displays.Count) return;
 
-            // Use DisplayManager to change display - this will notify all subscribers
             if (DisplayManager.SetDisplay(index))
             {
                 _selectedDisplayIndex = index;
@@ -234,11 +351,16 @@ namespace Aimmy2.UILibrary
 
         private void UpdateUI()
         {
+            ApplyContainerStyle();
+
             if (_displays.Count == 0)
             {
                 CurrentDisplayInfo.Content = "No displays detected";
                 return;
             }
+
+            bool isBeta = IsBetaUIEnabled;
+            var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
 
             // Update visual states
             for (int i = 0; i < DisplayGrid.Children.Count; i++)
@@ -249,26 +371,58 @@ namespace Aimmy2.UILibrary
 
                     if (isSelected)
                     {
-                        // Use current theme color
-                        border.Background = new SolidColorBrush(ThemeManager.ThemeColor);
-                        border.BorderBrush = new SolidColorBrush(Colors.White);
-                        border.BorderThickness = new Thickness(2);
+                        if (isBeta)
+                        {
+                            border.Background = new SolidColorBrush(scheme.PrimaryContainer);
+                            border.BorderBrush = new SolidColorBrush(scheme.Primary);
+                            border.BorderThickness = new Thickness(2);
+                        }
+                        else
+                        {
+                            border.Background = new SolidColorBrush(ThemeManager.ThemeColor);
+                            border.BorderBrush = new SolidColorBrush(Colors.White);
+                            border.BorderThickness = new Thickness(2);
+                        }
                     }
                     else
                     {
-                        border.Background = new SolidColorBrush(Color.FromArgb(51, 60, 60, 60));
-                        border.BorderBrush = new SolidColorBrush(Color.FromArgb(63, 255, 255, 255));
-                        border.BorderThickness = new Thickness(1);
+                        if (isBeta)
+                        {
+                            border.Background = new SolidColorBrush(scheme.SurfaceContainer);
+                            border.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                            border.BorderThickness = new Thickness(1);
+                        }
+                        else
+                        {
+                            border.Background = new SolidColorBrush(Color.FromArgb(51, 60, 60, 60));
+                            border.BorderBrush = new SolidColorBrush(Color.FromArgb(63, 255, 255, 255));
+                            border.BorderThickness = new Thickness(1);
+                        }
                     }
 
-                    // Update primary badge color if exists
+                    // Update child elements
                     if (border.Child is Grid grid)
                     {
                         foreach (var child in grid.Children)
                         {
                             if (child is Border badge && badge.Tag as string == "PrimaryBadge")
                             {
-                                badge.Background = new SolidColorBrush(ThemeManager.ThemeColor);
+                                badge.Background = new SolidColorBrush(isBeta ? scheme.Primary : ThemeManager.ThemeColor);
+                                if (badge.Child is TextBlock badgeText)
+                                {
+                                    badgeText.Foreground = new SolidColorBrush(isBeta ? scheme.OnPrimary : Colors.White);
+                                }
+                            }
+                            else if (child is TextBlock numText && numText.Tag as string == "DisplayNumber")
+                            {
+                                if (isBeta)
+                                {
+                                    numText.Foreground = new SolidColorBrush(isSelected ? scheme.OnPrimaryContainer : scheme.OnSurface);
+                                }
+                                else
+                                {
+                                    numText.Foreground = new SolidColorBrush(Color.FromArgb(221, 255, 255, 255));
+                                }
                             }
                         }
                     }
@@ -292,11 +446,11 @@ namespace Aimmy2.UILibrary
 
         public Rect GetSelectedDisplayBounds() => GetSelectedDisplay()?.Bounds ?? new Rect();
 
-        // Clean up event subscriptions
         public void Dispose()
         {
             ThemeManager.ThemeChanged -= OnThemeChanged;
             DisplayManager.DisplayChanged -= OnDisplayManagerChanged;
+            ThemeManager.BetaUIStateChanged -= OnBetaUIStateChanged;
         }
     }
 }

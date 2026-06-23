@@ -1,4 +1,4 @@
-﻿using Aimmy2.AILogic;
+using Aimmy2.AILogic;
 using Aimmy2.Class;
 using Aimmy2.MouseMovementLibraries.GHubSupport;
 using Aimmy2.UILibrary;
@@ -9,8 +9,10 @@ using MouseMovementLibraries.RazerSupport;
 using Other;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using UILibrary;
+using UISections;
 
 using MouseMovementLibraries.XInputSupport;
 using MouseMovementLibraries.DirectInputSupport;
@@ -22,8 +24,8 @@ namespace Aimmy2.Controls
     public partial class AimMenuControl : UserControl
     {
         //--
-        UISections.ColorPicker colorPickerInstance = null;
-        UISections.ColorPicker fovColorPickerInstance = null;
+        ColorPicker colorPickerInstance = null;
+        ColorPicker fovColorPickerInstance = null;
         //--
         private MainWindow? _mainWindow;
         private bool _isInitialized;
@@ -35,19 +37,19 @@ namespace Aimmy2.Controls
             { "Aim Config", false },
             { "Predictions", false },
             { "Auto Trigger", false },
-            { "FOV Config", false },
             { "ESP Config", false },
-            { "Controller Config", false }
+            { "FOV Config", false },
+            { "Anti-Recoil", false }
         };
 
         // Public properties for MainWindow access
         public StackPanel AimAssistPanel => AimAssist;
         public StackPanel TriggerBotPanel => TriggerBot;
-        public StackPanel ESPConfigPanel => ESPConfig;
         public StackPanel AimConfigPanel => AimConfig;
         public StackPanel PredictionsPanel => Predictions;
+        public StackPanel ESPConfigPanel => ESPConfig;
         public StackPanel FOVConfigPanel => FOVConfig;
-        public StackPanel ControllerConfigPanel => ControllerConfig;
+        public StackPanel AntiRecoilPanel => AntiRecoilConfig;
         public ScrollViewer AimMenuScrollViewer => AimMenu;
 
         public AimMenuControl()
@@ -70,11 +72,11 @@ namespace Aimmy2.Controls
             // Load all sections
             LoadAimAssist();
             LoadAimConfig();
+            LoadAntiRecoil();
             LoadPredictions();
             LoadTriggerBot();
-            LoadFOVConfig();
             LoadESPConfig();
-            LoadControllerConfig();
+            LoadFOVConfig();
 
             // Apply minimize states after loading
             ApplyMinimizeStates();
@@ -105,11 +107,11 @@ namespace Aimmy2.Controls
         {
             ApplyPanelState("Aim Assist", AimAssistPanel);
             ApplyPanelState("Aim Config", AimConfigPanel);
+            ApplyPanelState("Anti-Recoil", AntiRecoilPanel);
             ApplyPanelState("Predictions", PredictionsPanel);
             ApplyPanelState("Auto Trigger", TriggerBotPanel);
-            ApplyPanelState("FOV Config", FOVConfigPanel);
             ApplyPanelState("ESP Config", ESPConfigPanel);
-            ApplyPanelState("Controller Config", ControllerConfigPanel);
+            ApplyPanelState("FOV Config", FOVConfigPanel);
         }
 
         private void ApplyPanelState(string stateName, StackPanel panel)
@@ -170,36 +172,55 @@ namespace Aimmy2.Controls
                 .AddToggle("Aim Assist", t =>
                 {
                     uiManager.T_AimAligner = t;
-                    t.Reader.Click += (s, e) =>
+                }, tooltip: "Turn aim assist on or off. You must load a model first.",
+                customClickHandler: (toggle, e) =>
+                {
+                    bool currentlyOn = Dictionary.toggleState["Aim Assist"];
+
+                    if (Dictionary.lastLoadedModel == "N/A")
                     {
-                        if (Dictionary.toggleState["Aim Assist"] && Dictionary.lastLoadedModel == "N/A")
+                        if (currentlyOn)
                         {
                             Dictionary.toggleState["Aim Assist"] = false;
-                            _mainWindow.UpdateToggleUI(t, false);
+                            _mainWindow.UpdateToggleUI(toggle, false);
+                        }
+                        else
+                        {
                             LogManager.Log(LogManager.LogLevel.Warning, "Please load a model first", true);
                         }
-                    };
-                }, tooltip: "Turn aim assist on or off. You must load a model first.")
+                        return;
+                    }
+
+                    bool newState = !currentlyOn;
+                    Dictionary.toggleState["Aim Assist"] = newState;
+                    _mainWindow.UpdateToggleUI(toggle, newState);
+                })
                 .AddToggle("Constant AI Tracking", t =>
                 {
                     uiManager.T_ConstantAITracking = t;
-                    t.Reader.Click += (s, e) =>
+                }, tooltip: "Always track targets without holding a key. When off, you must hold the aim keybind.",
+                customClickHandler: (toggle, e) =>
+                {
+                    bool currentlyOn = Dictionary.toggleState["Constant AI Tracking"];
+
+                    if (Dictionary.lastLoadedModel == "N/A")
                     {
-                        if (Dictionary.toggleState["Constant AI Tracking"])
+                        if (currentlyOn)
                         {
-                            if (Dictionary.lastLoadedModel == "N/A")
-                            {
-                                Dictionary.toggleState["Constant AI Tracking"] = false;
-                                _mainWindow.UpdateToggleUI(t, false);
-                            }
-                            else
-                            {
-                                Dictionary.toggleState["Aim Assist"] = true;
-                                _mainWindow.UpdateToggleUI(uiManager.T_AimAligner, true);
-                            }
+                            Dictionary.toggleState["Constant AI Tracking"] = false;
+                            _mainWindow.UpdateToggleUI(toggle, false);
                         }
-                    };
-                }, tooltip: "Always track targets without holding a key. When off, you must hold the aim keybind.")
+                        else
+                        {
+                            LogManager.Log(LogManager.LogLevel.Warning, "Please load a model first", true);
+                        }
+                        return;
+                    }
+
+                    bool newState = !currentlyOn;
+                    Dictionary.toggleState["Constant AI Tracking"] = newState;
+                    _mainWindow.UpdateToggleUI(toggle, newState);
+                })
                 .AddToggle("Sticky Aim", t => uiManager.T_StickyAim = t,
                     tooltip: "Lock onto a target until it moves out of range instead of switching targets.")
                 .AddSlider("Sticky Aim Threshold", "Pixels", 1, 1, 0, 100, s =>
@@ -211,8 +232,9 @@ namespace Aimmy2.Controls
                 }, tooltip: "How far a target must move before switching to a new one. Higher = stays locked longer.")
                 .AddKeyChanger("Aim Keybind", k => uiManager.C_Keybind = k,
                     tooltip: "The key you hold to activate aim assist.")
-                .AddKeyChanger("Second Aim Keybind", tooltip: "An alternate key to activate aim assist.")
-                .AddSeparator();
+                .AddKeyChanger("Second Aim Keybind", tooltip: "An alternate key to activate aim assist.");
+
+            builder.AddSeparator();
         }
 
         private void LoadAimConfig()
@@ -230,115 +252,64 @@ namespace Aimmy2.Controls
                         _mainWindow?.UpdateAimConfigSliderVisibility();
                     };
                 })
-                .AddDropdown("Mouse Movement Method", d =>
-                {
-                    uiManager.D_MouseMovementMethod = d;
-                    d.DropdownBox.SelectedIndex = -1;  // Prevent auto-selection
+                 .AddDropdown("Mouse Movement Method", d =>
+                 {
+                     uiManager.D_MouseMovementMethod = d;
+                     d.DropdownBox.SelectedIndex = -1;  // Prevent auto-selection
 
-                    // Add options
-                    _mainWindow.AddDropdownItem(d, "Mouse Event");
-                    _mainWindow.AddDropdownItem(d, "SendInput");
-                    uiManager.DDI_LGHUB = _mainWindow.AddDropdownItem(d, "LG HUB");
-                    uiManager.DDI_RazerSynapse = _mainWindow.AddDropdownItem(d, "Razer Synapse (Require Razer Peripheral)");
-                    uiManager.DDI_ddxoft = _mainWindow.AddDropdownItem(d, "ddxoft Virtual Input Driver");
-                    uiManager.DDI_XInput = _mainWindow.AddDropdownItem(d, "XInput (Controller Input)");
-                    uiManager.DDI_XInputNormal = _mainWindow.AddDropdownItem(d, "XInput (Normal)");
-                    uiManager.DDI_DirectInput = _mainWindow.AddDropdownItem(d, "DirectInput (PS4/PS5 Controller)");
-                    uiManager.DDI_ViGEmXInput = _mainWindow.AddDropdownItem(d, "ViGEm Virtual Controller (Xbox 360 Output)");
+                     // Add options
+                     _mainWindow.AddDropdownItem(d, "Mouse Event");
+                     _mainWindow.AddDropdownItem(d, "SendInput");
+                     uiManager.DDI_LGHUB = _mainWindow.AddDropdownItem(d, "LG HUB");
+                     uiManager.DDI_RazerSynapse = _mainWindow.AddDropdownItem(d, "Razer Synapse (Require Razer Peripheral)");
+                     uiManager.DDI_ddxoft = _mainWindow.AddDropdownItem(d, "ddxoft Virtual Input Driver");
+                     uiManager.DDI_ViGEmXInput = _mainWindow.AddDropdownItem(d, "Virtual Controller (ViGEm)");
 
-                    // Setup handlers
-                    uiManager.DDI_LGHUB.Selected += async (s, e) =>
-                    {
-                        if (!new LGHubMain().Load())
-                            await ResetToMouseEvent();
-                    };
+                     // Setup handlers
+                     uiManager.DDI_LGHUB.Selected += (s, e) =>
+                     {
+                         new LGHubMain().Load();
+                     };
 
-                    uiManager.DDI_RazerSynapse.Selected += async (s, e) =>
-                    {
-                        if (!await RZMouse.Load())
-                            await ResetToMouseEvent();
-                    };
+                     uiManager.DDI_RazerSynapse.Selected += async (s, e) =>
+                     {
+                         await RZMouse.Load();
+                     };
 
-                    uiManager.DDI_ddxoft.Selected += async (s, e) =>
-                    {
-                        if (!await DdxoftMain.Load())
-                            await ResetToMouseEvent();
-                    };
+                     uiManager.DDI_ddxoft.Selected += async (s, e) =>
+                     {
+                         await DdxoftMain.Load();
+                     };
 
-                    uiManager.DDI_XInput.Selected += async (s, e) =>
-                    {
-                        var xinput = XInputMain.Instance;
-                        if (!xinput.Load())
-                        {
-                            LogManager.Log(LogManager.LogLevel.Warning, "XInput controller not found, reverting to Mouse Event", true);
-                            await ResetToMouseEvent();
-                        }
-                        else
-                        {
-                            LogManager.Log(LogManager.LogLevel.Info, "XInput controller connected (Controller Input mode)", false);
-                        }
-                    };
 
-                    uiManager.DDI_XInputNormal.Selected += async (s, e) =>
-                    {
-                        var xinput = XInputMain.Instance;
-                        if (!xinput.Load())
-                        {
-                            LogManager.Log(LogManager.LogLevel.Warning, "XInput controller not found, reverting to Mouse Event", true);
-                            await ResetToMouseEvent();
-                        }
-                        else
-                        {
-                            LogManager.Log(LogManager.LogLevel.Info, "XInput controller connected (Normal mode)", false);
-                        }
-                    };
-
-                    uiManager.DDI_DirectInput.Selected += async (s, e) =>
-                    {
-                        var directInput = DirectInputMain.Instance;
-                        if (!directInput.Load())
-                        {
-                            LogManager.Log(LogManager.LogLevel.Warning, "DirectInput controller not found, reverting to Mouse Event", true);
-                            await ResetToMouseEvent();
-                        }
-                        else
-                        {
-                            LogManager.Log(LogManager.LogLevel.Info, "DirectInput controller connected (PS4/PS5 mode)", false);
-                        }
-                    };
-
-                    uiManager.DDI_ViGEmXInput.Selected += async (s, e) =>
-                    {
-                        // First check if DLL exists, auto-download if missing (like ddxoft)
-                        if (!VirtualControllerOutput.IsConnected)
-                        {
-                            bool loaded = await VirtualControllerOutput.LoadViGEmClient();
-                            if (loaded)
-                            {
-                                // DLL loaded, now initialize
-                                if (!VirtualControllerOutput.Initialize())
-                                {
-                                    LogManager.Log(LogManager.LogLevel.Warning, "ViGEmBus driver not responding. Make sure ViGEmBus is installed and running.", true);
-                                    await ResetToMouseEvent();
-                                }
-                                else
-                                {
-                                    LogManager.Log(LogManager.LogLevel.Info, "Virtual Xbox 360 controller created - gamepad tester will show thumbstick movements", false);
-                                }
-                            }
-                            else
-                            {
-                                LogManager.Log(LogManager.LogLevel.Warning, "ViGEmClient.dll not found and download failed. Install ViGEmBus from https://github.com/ViGEm/ViGEmBus/releases or download the DLL manually.", true);
-                                await ResetToMouseEvent();
-                            }
-                        }
-                        else
-                        {
-                            LogManager.Log(LogManager.LogLevel.Info, "Virtual Xbox 360 controller already connected", false);
-                        }
-                    };
-                }, tooltip: "How mouse movements are sent. Try different options if aim assist isn't working.")
-                .AddDropdown("Movement Path", d =>
+                      uiManager.DDI_ViGEmXInput.Selected += (s, e) =>
+                      {
+                          // ✅ FIRST: SET DROPDOWN STATE IMMEDIATELY BEFORE ANY AWAIT!
+                          // WPF ABORTS ASYNC EVENT HANDLERS AFTER FIRST AWAIT. THIS WAS THE FINAL BUG.
+                          Dictionary.dropdownState["Mouse Movement Method"] = "Virtual Controller (ViGEm)";
+                          
+                          // Dispatch remaining logic as background work so it doesn't get cancelled
+                          _ = Application.Current.Dispatcher.BeginInvoke(async () =>
+                          {
+                              if (!VirtualControllerOutput.IsConnected && !VirtualControllerOutput.InitializationAttempted)
+                              {
+                                  if (!VirtualControllerOutput.Initialize())
+                                  {
+                                      LogManager.Log(LogManager.LogLevel.Warning, "ViGEmBus driver not responding. Make sure ViGEmBus is installed and running.", true);
+                                  }
+                                  else
+                                  {
+                                      LogManager.Log(LogManager.LogLevel.Info, "Virtual controller created - gamepad tester will show thumbstick movements", false);
+                                  }
+                              }
+                              else
+                              {
+                                  LogManager.Log(LogManager.LogLevel.Info, "Virtual controller already connected", false);
+                              }
+                          });
+                      };
+                 }, tooltip: "How mouse movements are sent. Try different options if aim assist isn't working.")
+                 .AddDropdown("Movement Path", d =>
                 {
                     d.DropdownBox.SelectedIndex = 0;
                     uiManager.D_MovementPath = d;
@@ -354,6 +325,7 @@ namespace Aimmy2.Controls
                     uiManager.D_DetectionAreaType = d;
                     uiManager.DDI_ClosestToCenterScreen = _mainWindow.AddDropdownItem(d, "Closest to Center Screen");
                     _mainWindow.AddDropdownItem(d, "Closest to Mouse");
+                    _mainWindow.AddDropdownItem(d, "Highest Confidence");
 
                     uiManager.DDI_ClosestToCenterScreen.Selected += async (s, e) =>
                     {
@@ -381,6 +353,8 @@ namespace Aimmy2.Controls
         private void AddConfigSliders(SectionBuilder builder, UI uiManager)
         {
             builder
+                .AddSlider("Maximum Detections", "Count", 1, 1, 1, 100, s => uiManager.S_MaxDetections = s,
+                    tooltip: "Maximum number of targets to track at once. Lower = better performance.")
                 .AddSlider("Mouse Sensitivity (+/-)", "Sensitivity", 0.01, 0.01, 0.01, 1, s =>
                 {
                     uiManager.S_MouseSensitivity = s;
@@ -429,6 +403,51 @@ namespace Aimmy2.Controls
                     s.Visibility = Dictionary.toggleState["X Axis Percentage Adjustment"]
                         ? Visibility.Visible : Visibility.Collapsed;
                 }, tooltip: "Move aim point left or right as a percentage of the target box width.");
+        }
+
+        private void LoadAntiRecoil()
+        {
+            var uiManager = _mainWindow!.uiManager;
+            var builder = new SectionBuilder(this, AntiRecoilConfig);
+
+            builder
+                .AddTitle("Anti-Recoil", true, t =>
+                {
+                    uiManager.AT_AntiRecoil = t;
+                    t.Minimize.Click += (s, e) =>
+                    {
+                        TogglePanel("Anti-Recoil", AntiRecoilPanel);
+                    };
+                })
+                .AddToggle("Anti-Recoil", t => uiManager.T_AntiRecoil = t,
+                    tooltip: "Enable anti-recoil when holding a keybind.",
+                    customClickHandler: (toggle, e) =>
+                    {
+                        bool currentlyOn = Dictionary.toggleState["Anti-Recoil"];
+                        bool newState = !currentlyOn;
+                        Dictionary.toggleState["Anti-Recoil"] = newState;
+                        _mainWindow.UpdateToggleUI(toggle, newState);
+                    })
+                .AddKeyChanger("Anti Recoil Keybind", k => { }, tooltip: "Key to hold to trigger Anti-Recoil.")
+                .AddKeyChanger("Disable Anti Recoil Keybind", k => { }, tooltip: "Key to completely disable Anti-Recoil.")
+                .AddSlider("Hold Time", "ms", 1, 1, 0, 1000, s => {
+                    uiManager.S_ARHoldTime = s;
+                    s.Slider.ValueChanged += (sender, e) => Dictionary.sliderSettings["AR Hold Time"] = s.Slider.Value;
+                }, tooltip: "Time to wait before starting Anti-Recoil.")
+                .AddSlider("Fire Rate", "ms", 1, 1, 10, 1000, s => {
+                    uiManager.S_ARFireRate = s;
+                    s.Slider.ValueChanged += (sender, e) => Dictionary.sliderSettings["AR Fire Rate"] = s.Slider.Value;
+                }, tooltip: "Delay between pulling down.")
+                .AddSlider("Y Recoil (Up/Down)", "Offset", 0.1, 1, -150, 150, s => {
+                    uiManager.S_YAntiRecoilAdjustment = s;
+                    s.Slider.ValueChanged += (sender, e) => Dictionary.sliderSettings["AR Y Recoil"] = s.Slider.Value;
+                }, tooltip: "Pull mouse vertically.")
+                .AddSlider("X Recoil (Left/Right)", "Offset", 0.1, 1, -150, 150, s => {
+                    uiManager.S_XAntiRecoilAdjustment = s;
+                    s.Slider.ValueChanged += (sender, e) => Dictionary.sliderSettings["AR X Recoil"] = s.Slider.Value;
+                }, tooltip: "Pull mouse horizontally.");
+
+            builder.AddSeparator();
         }
 
         private void LoadPredictions()
@@ -516,6 +535,112 @@ namespace Aimmy2.Controls
                 .AddSeparator();
         }
 
+        private void LoadESPConfig()
+        {
+            var uiManager = _mainWindow!.uiManager;
+            var builder = new SectionBuilder(this, ESPConfig);
+
+            builder
+                .AddTitle("ESP Config", true, t =>
+                {
+                    uiManager.AT_DetectedPlayer = t;
+                    t.Minimize.Click += (s, e) => TogglePanel("ESP Config", ESPConfigPanel);
+                })
+                .AddToggle("Show Detected Player", t => uiManager.T_ShowDetectedPlayer = t,
+                    tooltip: "Draw a box around detected targets on screen.")
+                .AddToggle("Show AI Confidence", t => uiManager.T_ShowAIConfidence = t,
+                    tooltip: "Display how confident the AI is about each detection (0-100%).")
+                .AddToggle("Confidence Bar", t => uiManager.T_ConfidenceBar = t,
+                    tooltip: "Show confidence as a visual bar instead of text.")
+                .AddToggle("Show Aim Point", t => uiManager.T_ShowAimPoint = t,
+                    tooltip: "Display the head box and aim dot on detected targets.")
+                .AddToggle("Show Tracers", t => uiManager.T_ShowTracers = t,
+                    tooltip: "Draw lines from screen edge to detected targets.")
+                .AddToggle("Smooth Tracking", t => uiManager.T_SmoothTracking = t,
+                    tooltip: "Smooth out bounding box movements with interpolation. When off, boxes snap instantly.");
+
+            builder.AddDropdown("Tracer Position", d =>
+            {
+                d.DropdownBox.SelectedIndex = 0;
+                uiManager.D_TracerPosition = d;
+                _mainWindow.AddDropdownItem(d, "Top");
+                _mainWindow.AddDropdownItem(d, "Middle");
+                _mainWindow.AddDropdownItem(d, "Bottom");
+                d.DropdownBox.SelectionChanged += (s, e) =>
+                {
+                    if (Dictionary.toggleState["Show Detected Player"])
+                    {
+                        uiManager.T_ShowDetectedPlayer.Reader.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        uiManager.T_ShowDetectedPlayer.Reader.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                    }
+                    else
+                    {
+                        if (Dictionary.DetectedPlayerOverlay != null)
+                        {
+                            Dictionary.DetectedPlayerOverlay.ForceReposition();
+                        }
+                    }
+                };
+            }, tooltip: "Where tracer lines start from on the screen.");
+
+            builder
+                .AddColorChanger("Detected Player Color", c =>
+                {
+                    c.Reader.Click += (s, e) =>
+                    {
+                        if (colorPickerInstance != null && colorPickerInstance.IsVisible)
+                        {
+                            colorPickerInstance.Activate();
+                            return;
+                        }
+
+                        Color initialColor = Colors.White;
+                        if (c.ColorChangingBorder.Background is SolidColorBrush scb)
+                            initialColor = scb.Color;
+                        colorPickerInstance = new ColorPicker(initialColor, "ESP Color");
+
+                        colorPickerInstance.ColorChanged += (color) =>
+                        {
+                            c.ColorChangingBorder.Background = new SolidColorBrush(color);
+                            Dictionary.colorState["Detected Player Color"] = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+                            PropertyChanger.PostDPColor(color);
+                        };
+
+                        colorPickerInstance.Closed += (sender, args) =>
+                        {
+                            colorPickerInstance = null;
+                        };
+
+                        colorPickerInstance.Show();
+                    };
+                })
+                .AddSlider("AI Confidence Font Size", "Size", 1, 1, 1, 30, s =>
+                {
+                    uiManager.S_DPFontSize = s;
+                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPFontSize((int)s.Slider.Value);
+                }, tooltip: "Text size for the confidence percentage display.")
+                .AddSlider("Corner Radius", "Radius", 1, 1, 0, 100, s =>
+                {
+                    uiManager.S_DPCornerRadius = s;
+                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPWCornerRadius((int)s.Slider.Value);
+                }, tooltip: "How rounded the detection box corners are. 0 = sharp corners.")
+                .AddSlider("Border Thickness", "Thickness", 0.1, 1, 0.1, 10, s =>
+                {
+                    uiManager.S_DPBorderThickness = s;
+                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPWBorderThickness(s.Slider.Value);
+                }, tooltip: "How thick the detection box outline is.")
+                .AddSlider("Opacity", "Opacity", 0.1, 0.1, 0, 1, s =>
+                {
+                    uiManager.S_DPOpacity = s;
+                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPWOpacity(s.Slider.Value);
+                }, tooltip: "How see-through the detection box is. 0 = invisible, 1 = solid.")
+                .AddSlider("Tracking Smooth Speed", "Speed", 0.5, 0.5, 1, 30, s =>
+                {
+                    uiManager.S_TrackingSmoothSpeed = s;
+                }, tooltip: "How fast the bounding box interpolates to target position. Higher = snappier, Lower = smoother.")
+                .AddSeparator();
+        }
+
         private void LoadFOVConfig()
         {
             var uiManager = _mainWindow!.uiManager;
@@ -538,7 +663,6 @@ namespace Aimmy2.Controls
                 .AddDropdown("FOV Style", d =>
                 {
                     uiManager.D_FOVSTYLE = d;
-
                     var circleItem = _mainWindow.AddDropdownItem(d, "Circle");
                     var rectangleItem = _mainWindow.AddDropdownItem(d, "Rectangle");
 
@@ -567,13 +691,11 @@ namespace Aimmy2.Controls
                         Color initialColor = Colors.White;
                         if (c.ColorChangingBorder.Background is SolidColorBrush scb)
                             initialColor = scb.Color;
-                        fovColorPickerInstance = new UISections.ColorPicker(initialColor, "FOV Color");
+                        fovColorPickerInstance = new ColorPicker(initialColor, "FOV Color");
 
                         fovColorPickerInstance.ColorChanged += (color) =>
                         {
-                            // Update the color square
                             c.ColorChangingBorder.Background = new SolidColorBrush(color);
-                            // Save to dictionary for persistence
                             Dictionary.colorState["FOV Color"] = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
                             PropertyChanger.PostColor(color);
                         };
@@ -607,160 +729,6 @@ namespace Aimmy2.Controls
                 .AddSeparator();
         }
 
-        private void LoadESPConfig()
-        {
-            var uiManager = _mainWindow!.uiManager;
-            var builder = new SectionBuilder(this, ESPConfig);
-
-            builder
-                .AddTitle("ESP Config", true, t =>
-                {
-                    uiManager.AT_DetectedPlayer = t;
-                    t.Minimize.Click += (s, e) => TogglePanel("ESP Config", ESPConfigPanel);
-                })
-                .AddToggle("Show Detected Player", t => uiManager.T_ShowDetectedPlayer = t,
-                    tooltip: "Draw a box around detected targets on screen.")
-                .AddToggle("Show AI Confidence", t => uiManager.T_ShowAIConfidence = t,
-                    tooltip: "Display how confident the AI is about each detection (0-100%).")
-                .AddToggle("Show Tracers", t => uiManager.T_ShowTracers = t,
-                    tooltip: "Draw lines from screen edge to detected targets.");
-
-            builder.AddDropdown("Tracer Position", d =>
-            {
-                d.DropdownBox.SelectedIndex = 0;
-                uiManager.D_TracerPosition = d;
-                // Changed the positions of these as top is above middle & bottom - ts (this) bothered me so i had to
-                _mainWindow.AddDropdownItem(d, "Top");
-                _mainWindow.AddDropdownItem(d, "Middle");
-                _mainWindow.AddDropdownItem(d, "Bottom");
-                d.DropdownBox.SelectionChanged += (s, e) =>
-                {
-                    if (Dictionary.toggleState["Show Detected Player"])
-                    {
-                        // simulate a click to turn it off - this is to force a reload of the ui cause tracer doesn't update otherwise - helz
-                        uiManager.T_ShowDetectedPlayer.Reader.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                        // simulate a click to turn it back on - same as before ^ - helz
-                        uiManager.T_ShowDetectedPlayer.Reader.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                    }
-                    else
-                    {
-                        if (Dictionary.DetectedPlayerOverlay != null)
-                        {
-                            Dictionary.DetectedPlayerOverlay.ForceReposition();
-                        }
-                    }
-                };
-            }, tooltip: "Where tracer lines start from on the screen.");
-
-            builder
-                .AddColorChanger("Detected Player Color", c =>
-                {
-                    c.Reader.Click += (s, e) =>
-                    {
-                        if (colorPickerInstance != null && colorPickerInstance.IsVisible)
-                        {
-                            colorPickerInstance.Activate();
-                            return;
-                        }
-
-                        Color initialColor = Colors.White;
-                        if (c.ColorChangingBorder.Background is SolidColorBrush scb)
-                            initialColor = scb.Color;
-                        colorPickerInstance = new UISections.ColorPicker(initialColor, "ESP Color");
-
-                        colorPickerInstance.ColorChanged += (color) =>
-                        {
-                            // Update the color square
-                            c.ColorChangingBorder.Background = new SolidColorBrush(color);
-                            // Save to dictionary for persistence
-                            Dictionary.colorState["Detected Player Color"] = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
-                            PropertyChanger.PostDPColor(color);
-                        };
-
-                        colorPickerInstance.Closed += (sender, args) =>
-                        {
-                            colorPickerInstance = null;
-                        };
-
-                        colorPickerInstance.Show();
-                    };
-                })
-                .AddSlider("AI Confidence Font Size", "Size", 1, 1, 1, 30, s =>
-                {
-                    uiManager.S_DPFontSize = s;
-                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPFontSize((int)s.Slider.Value);
-                }, tooltip: "Text size for the confidence percentage display.")
-                .AddSlider("Corner Radius", "Radius", 1, 1, 0, 100, s =>
-                {
-                    uiManager.S_DPCornerRadius = s;
-                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPWCornerRadius((int)s.Slider.Value);
-                }, tooltip: "How rounded the detection box corners are. 0 = sharp corners.")
-                .AddSlider("Border Thickness", "Thickness", 0.1, 1, 0.1, 10, s =>
-                {
-                    uiManager.S_DPBorderThickness = s;
-                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPWBorderThickness(s.Slider.Value);
-                }, tooltip: "How thick the detection box outline is.")
-                .AddSlider("Opacity", "Opacity", 0.1, 0.1, 0, 1, s =>
-                {
-                    uiManager.S_DPOpacity = s;
-                    s.Slider.ValueChanged += (sender, e) => PropertyChanger.PostDPWOpacity(s.Slider.Value);
-                }, tooltip: "How see-through the detection box is. 0 = invisible, 1 = solid.")
-                .AddSeparator();
-        }
-
-        private void LoadControllerConfig()
-        {
-            var builder = new SectionBuilder(this, ControllerConfig);
-
-            builder
-                .AddTitle("Controller Config", true, t =>
-                {
-                    t.Minimize.Click += (s, e) => TogglePanel("Controller Config", ControllerConfigPanel);
-                })
-                .AddToggle("XInput Controller Support", t =>
-                {
-                    t.Reader.Click += (s, e) =>
-                    {
-                        if (Dictionary.toggleState["XInput Controller"])
-                        {
-                            var xinput = XInputMain.Instance;
-                            if (xinput.Load())
-                            {
-                                LogManager.Log(LogManager.LogLevel.Info, "XInput controller connected", false);
-                            }
-                            else
-                            {
-                                Dictionary.toggleState["XInput Controller"] = false;
-                                t.DisableSwitch();
-                                LogManager.Log(LogManager.LogLevel.Warning, "No XInput controller detected", true);
-                            }
-                        }
-                        else
-                        {
-                            XInputMain.Instance.Disconnect();
-                        }
-                    };
-                }, tooltip: "Enable native XInput controller support for aim assist. Does not require vJoy/ViGEmBus.")
-                .AddButton("Test Vibration", b => b.Reader.Click += (s, e) =>
-                {
-                    if (XInputMain.Instance.IsConnected)
-                    {
-                        XInputMain.Instance.Vibrate(30000, 30000);
-                        Task.Delay(200).ContinueWith(_ =>
-                            XInputMain.Instance.Vibrate(0, 0));
-                    }
-                    else
-                    {
-                        LogManager.Log(LogManager.LogLevel.Warning, "No controller connected", true);
-                    }
-                }, tooltip: "Test controller vibration (requires XInput enabled).")
-                .AddSeparator();
-        }
-
-        #endregion
-
-        #region Helper Methods
-
         private void OnImageSizeChanged(int imageSize)
         {
             Application.Current.Dispatcher.Invoke(() =>
@@ -782,11 +750,7 @@ namespace Aimmy2.Controls
             slider.Slider.Maximum = imageSize;
         }
 
-        private async Task ResetToMouseEvent()
-        {
-            await Task.Delay(500);
-            _mainWindow!.uiManager.D_MouseMovementMethod!.DropdownBox.SelectedIndex = 0;
-        }
+
 
         private void HandleColorChange(AColorChanger colorChanger, string settingKey, Action<Color> updateAction)
         {
@@ -829,10 +793,11 @@ namespace Aimmy2.Controls
                 return this;
             }
 
-            public SectionBuilder AddToggle(string title, Action<AToggle>? configure = null, string? tooltip = null)
+            public SectionBuilder AddToggle(string title, Action<AToggle>? configure = null, string? tooltip = null, Action<AToggle, RoutedEventArgs>? customClickHandler = null)
             {
-                var toggle = _parent.CreateToggle(title, tooltip);
+                var toggle = _parent.CreateToggle(title, tooltip, customClickHandler);
                 configure?.Invoke(toggle);
+                toggle.HorizontalAlignment = HorizontalAlignment.Stretch;
                 _panel.Children.Add(toggle);
                 return this;
             }
@@ -851,6 +816,7 @@ namespace Aimmy2.Controls
             {
                 var slider = _parent.CreateSlider(title, label, frequency, buttonSteps, min, max, tooltip);
                 configure?.Invoke(slider);
+                slider.HorizontalAlignment = HorizontalAlignment.Stretch;
                 _panel.Children.Add(slider);
                 return this;
             }
@@ -900,12 +866,11 @@ namespace Aimmy2.Controls
 
         #region Control Creation Methods
 
-        private AToggle CreateToggle(string title, string? tooltip = null)
+        private AToggle CreateToggle(string title, string? tooltip = null, Action<AToggle, RoutedEventArgs>? customClickHandler = null)
         {
             var toggle = new AToggle(title, tooltip);
             _mainWindow!.toggleInstances[title] = toggle;
 
-            // Safely get boolean value, fixing corrupted data (e.g., double stored instead of bool)
             bool initialState = false;
             if (Dictionary.toggleState.TryGetValue(title, out var value))
             {
@@ -913,24 +878,31 @@ namespace Aimmy2.Controls
                     initialState = b;
                 else
                 {
-                    // Fix corrupted data - coerce to false for safety, log warning
                     Dictionary.toggleState[title] = false;
                 }
             }
 
-            // Set initial state
             if (initialState)
                 toggle.EnableSwitch();
             else
                 toggle.DisableSwitch();
 
-            // Handle click
-            toggle.Reader.Click += (sender, e) =>
+            if (customClickHandler != null)
             {
-                Dictionary.toggleState[title] = !Dictionary.toggleState[title];
-                _mainWindow.UpdateToggleUI(toggle, Dictionary.toggleState[title]);
-                _mainWindow.Toggle_Action(title);
-            };
+                toggle.Reader.Click += (sender, e) =>
+                {
+                    customClickHandler(toggle, e);
+                };
+            }
+            else
+            {
+                toggle.Reader.Click += (sender, e) =>
+                {
+                    Dictionary.toggleState[title] = !Dictionary.toggleState[title];
+                    _mainWindow.UpdateToggleUI(toggle, Dictionary.toggleState[title]);
+                    _mainWindow.Toggle_Action(title);
+                };
+            }
 
             return toggle;
         }

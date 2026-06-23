@@ -1,4 +1,4 @@
-﻿using Aimmy2.Theme;
+using Aimmy2.Theme;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -81,16 +81,63 @@ namespace Aimmy2
         {
             try
             {
-                var baseColor = ThemeManager.ThemeColor;
+                bool isBeta = Class.Dictionary.toggleState.TryGetValue("Beta UI", out var val) && val is bool b && b;
+                if (isBeta)
+                {
+                    ApplyM3StartupTheme();
+                }
+                else
+                {
+                    var baseColor = ThemeManager.ThemeColor;
 
-                UpdateStartupGradients(baseColor);
-                UpdateLoadingDots(baseColor);
-                UpdateDynamicResources(baseColor);
-                UpdateParticleColors(baseColor);
+                    UpdateStartupGradients(baseColor);
+                    UpdateLoadingDots(baseColor);
+                    UpdateDynamicResources(baseColor);
+                    UpdateParticleColors(baseColor);
+                }
             }
             catch (Exception ex)
             {
             }
+        }
+
+        private void ApplyM3StartupTheme()
+        {
+            var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+
+            // Set window shape (28px corner radius)
+            RevealClip.RadiusX = 28;
+            RevealClip.RadiusY = 28;
+            MainBorder.CornerRadius = new CornerRadius(28);
+            if (GlowBorder != null)
+                GlowBorder.CornerRadius = new CornerRadius(28);
+
+            // M3 Surface Background
+            MainBorder.Background = new SolidColorBrush(scheme.Surface);
+            MainBorder.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+            MainBorder.BorderThickness = new Thickness(1);
+
+            // Title colors
+            TitleText.Foreground = new SolidColorBrush(scheme.OnSurface);
+            SubtitleText.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+
+            // Loading text color
+            LoadingText.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+
+            // Loading dots: use scheme.Primary
+            Dot1.Fill = new SolidColorBrush(scheme.Primary);
+            Dot2.Fill = new SolidColorBrush(scheme.Primary);
+            Dot3.Fill = new SolidColorBrush(scheme.Primary);
+
+            Dot1Shadow.Color = scheme.Primary;
+            Dot2Shadow.Color = scheme.Primary;
+            Dot3Shadow.Color = scheme.Primary;
+
+            // Pulse ring
+            PulseRing.Stroke = new SolidColorBrush(scheme.Primary);
+
+            // Central glow
+            UpdateCentralGlow(scheme.Primary);
         }
 
         private void UpdateDynamicResources(Color baseColor)

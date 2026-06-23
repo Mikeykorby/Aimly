@@ -1,4 +1,4 @@
-﻿using Aimmy2.UILibrary;
+using Aimmy2.UILibrary;
 using System.Windows.Controls;
 using UILibrary;
 
@@ -73,13 +73,17 @@ namespace Class
         public AToggle? T_ShowDetectedPlayer { get; set; }
 
         public AToggle? T_ShowAIConfidence { get; set; }
+        public AToggle? T_ConfidenceBar { get; set; }
+        public AToggle? T_ShowAimPoint { get; set; }
         public AToggle? T_ShowTracers { get; set; }
+        public AToggle? T_SmoothTracking { get; set; }
         public ADropdown? D_TracerPosition { get; set; }
         public AColorChanger? CC_DetectedPlayerColor { get; set; }
         public ASlider? S_DPFontSize { get; set; }
         public ASlider? S_DPCornerRadius { get; set; }
         public ASlider? S_DPBorderThickness { get; set; }
         public ASlider? S_DPOpacity { get; set; }
+        public ASlider? S_TrackingSmoothSpeed { get; set; }
 
         // Model Settings
         public ATitle? AT_ModelSettings { get; set; }
@@ -98,8 +102,13 @@ namespace Class
         public ComboBoxItem? DDI_XInputNormal { get; set; }
         public ComboBoxItem? DDI_DirectInput { get; set; }
         public ComboBoxItem? DDI_ViGEmXInput { get; set; }
+        public AToggle? T_ControllerOutputMode { get; set; }
+        public AToggle? T_XInputController { get; set; }
+        public APButton? B_TestVibration { get; set; }
+        public ASlider? S_AIOutputFPS { get; set; }
         public AToggle? T_DebugMode { get; set; }
         public ASlider? S_AIMinimumConfidence { get; set; }
+        public ASlider? S_MaxDetections { get; set; }
         public AToggle? T_MouseBackgroundEffect { get; set; }
         public AToggle? T_UITopMost { get; set; }
         public APButton? B_SaveConfig { get; set; }
@@ -115,6 +124,8 @@ namespace Class
         // Theme Color Changer
         public ATitle? AT_ThemeColorWheel { get; set; }
         public AColorWheel? ThemeColorWheel { get; set; }
+        public AToggle? T_BetaUI { get; set; }
+        public ADropdown? D_UI_Font { get; set; }
 
         // Display Selector
         public ATitle? AT_DisplaySelector { get; set; }
@@ -125,5 +136,13 @@ namespace Class
 
         // Stores
         public APButton? B_RepoManager { get; set; }
+        
+        // Anti Recoil UI
+        public ATitle? AT_AntiRecoil { get; set; }
+        public AToggle? T_AntiRecoil { get; set; }
+        public ASlider? S_ARHoldTime { get; set; }
+        public ASlider? S_ARFireRate { get; set; }
+        public ASlider? S_YAntiRecoilAdjustment { get; set; }
+        public ASlider? S_XAntiRecoilAdjustment { get; set; }
     }
 }

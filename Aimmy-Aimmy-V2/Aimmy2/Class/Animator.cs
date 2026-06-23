@@ -1,4 +1,5 @@
-﻿using System.Windows;
+using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace AimmyWPF.Class
@@ -42,6 +43,56 @@ namespace AimmyWPF.Class
             StoryBoard.Children.Add(Fade);
             StoryBoard.Begin();
             StoryBoard.Children.Remove(Fade);
+        }
+
+        public static void SlideAndFadeIn(UIElement element, double fromYOffset = 20)
+        {
+            var translate = new TranslateTransform(0, fromYOffset);
+            element.RenderTransform = translate;
+
+            var slideAnim = new DoubleAnimation
+            {
+                From = fromYOffset,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(400),
+                EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            var fadeAnim = new DoubleAnimation
+            {
+                From = 0.0,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(400),
+                EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            translate.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+            element.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
+        }
+
+        public static void SlideAndFadeOut(UIElement element, double toYOffset = -20)
+        {
+            var translate = new TranslateTransform(0, 0);
+            element.RenderTransform = translate;
+
+            var slideAnim = new DoubleAnimation
+            {
+                From = 0,
+                To = toYOffset,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
+            };
+
+            var fadeAnim = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
+            };
+
+            translate.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+            element.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
         }
 
         public static void ObjectShift(Duration speed, DependencyObject Object, Thickness Get, Thickness Set)

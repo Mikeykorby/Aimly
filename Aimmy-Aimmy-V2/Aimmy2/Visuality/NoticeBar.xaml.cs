@@ -233,6 +233,14 @@ namespace Visuality
         public Color ThemeColorMid { get; private set; }
         public Color ThemeColorEnd { get; private set; }
 
+        public CornerRadius CardCornerRadius { get; private set; }
+        public Brush CardBorderBrush { get; private set; }
+        public Brush CardBackground { get; private set; }
+        public Brush MessageForeground { get; private set; }
+        public Brush TypeLabelForeground { get; private set; }
+        public CornerRadius ProgressCornerRadius { get; private set; }
+        public Brush ProgressBackground { get; private set; }
+
         public bool IsRemoving
         {
             get => _isRemoving;
@@ -270,11 +278,22 @@ namespace Visuality
             IconBackground = new SolidColorBrush(Colors.Gray);
             ProgressBrush = new SolidColorBrush(Colors.Gray);
 
+            // Defaults
+            CardCornerRadius = new CornerRadius(12);
+            CardBorderBrush = new SolidColorBrush(Color.FromArgb(0x3F, 0xFF, 0xFF, 0xFF));
+            CardBackground = Brushes.Black;
+            MessageForeground = Brushes.White;
+            TypeLabelForeground = Brushes.White;
+            ProgressCornerRadius = new CornerRadius(0, 0, 12, 12);
+            ProgressBackground = new SolidColorBrush(Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
+
             UpdateThemeColors();
         }
 
         public void UpdateThemeColors()
         {
+            bool isBeta = Dictionary.toggleState.TryGetValue("Beta UI", out var val) && val is bool b && b;
+
             Color typeColor = Type switch
             {
                 NoticeType.Success => Color.FromRgb(34, 197, 94),
@@ -295,9 +314,70 @@ namespace Visuality
                                           ThemeManager.ThemeColorDark.G,
                                           ThemeManager.ThemeColorDark.B);
 
+            if (isBeta)
+            {
+                var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+
+                // M3 Snackbar: rounded 16px, transparent border
+                CardCornerRadius = new CornerRadius(16);
+                CardBorderBrush = Brushes.Transparent;
+
+                // Snackbar M3: InverseSurface background, InverseOnSurface text
+                CardBackground = new SolidColorBrush(scheme.InverseSurface);
+                MessageForeground = new SolidColorBrush(scheme.InverseOnSurface);
+
+                // Contrast type label foreground on light snackbar background
+                TypeLabelForeground = Type switch
+                {
+                    NoticeType.Success => new SolidColorBrush(Color.FromRgb(21, 128, 61)),
+                    NoticeType.Warning => new SolidColorBrush(Color.FromRgb(180, 83, 9)),
+                    NoticeType.Error => new SolidColorBrush(Color.FromRgb(185, 28, 28)),
+                    _ => new SolidColorBrush(scheme.InversePrimary)
+                };
+
+                ProgressCornerRadius = new CornerRadius(0, 0, 16, 16);
+                ProgressBackground = new SolidColorBrush(Color.FromArgb(25, scheme.InverseOnSurface.R, scheme.InverseOnSurface.G, scheme.InverseOnSurface.B));
+                ProgressBrush = Type switch
+                {
+                    NoticeType.Success => new SolidColorBrush(Color.FromRgb(21, 128, 61)),
+                    NoticeType.Warning => new SolidColorBrush(Color.FromRgb(180, 83, 9)),
+                    NoticeType.Error => new SolidColorBrush(Color.FromRgb(185, 28, 28)),
+                    _ => new SolidColorBrush(scheme.InversePrimary)
+                };
+            }
+            else
+            {
+                // Standard dark theme notice styling
+                CardCornerRadius = new CornerRadius(12);
+                CardBorderBrush = new SolidColorBrush(Color.FromArgb(0x3F, 0xFF, 0xFF, 0xFF));
+
+                var lgb = new LinearGradientBrush
+                {
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(1, 1)
+                };
+                lgb.GradientStops.Add(new GradientStop(Color.FromRgb(0x10, 0x10, 0x10), 0));
+                lgb.GradientStops.Add(new GradientStop(Color.FromRgb(ThemeManager.ThemeColor.R, ThemeManager.ThemeColor.G, ThemeManager.ThemeColor.B), 0.5));
+                lgb.GradientStops.Add(new GradientStop(Color.FromRgb(ThemeManager.ThemeColorDark.R, ThemeManager.ThemeColorDark.G, ThemeManager.ThemeColorDark.B), 1));
+                CardBackground = lgb;
+
+                MessageForeground = new SolidColorBrush(Color.FromArgb(0xDD, 0xFF, 0xFF, 0xFF));
+                TypeLabelForeground = IconColor;
+                ProgressCornerRadius = new CornerRadius(0, 0, 12, 12);
+                ProgressBackground = new SolidColorBrush(Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
+                ProgressBrush = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
+            }
+
+            OnPropertyChanged(nameof(CardCornerRadius));
+            OnPropertyChanged(nameof(CardBorderBrush));
+            OnPropertyChanged(nameof(CardBackground));
+            OnPropertyChanged(nameof(MessageForeground));
+            OnPropertyChanged(nameof(TypeLabelForeground));
+            OnPropertyChanged(nameof(ProgressCornerRadius));
+            OnPropertyChanged(nameof(ProgressBackground));
+            OnPropertyChanged(nameof(ProgressBrush));
             OnPropertyChanged(nameof(IconColor));
             OnPropertyChanged(nameof(IconBackground));
-            OnPropertyChanged(nameof(ProgressBrush));
             OnPropertyChanged(nameof(ThemeColorMid));
             OnPropertyChanged(nameof(ThemeColorEnd));
         }

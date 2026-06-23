@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Label="Globals" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <Microsoft_AI_DirectML_SkipDebugLayerCopy>True</Microsoft_AI_DirectML_SkipDebugLayerCopy>
@@ -29,11 +29,11 @@
     <UseWindowsForms>false</UseWindowsForms>
     <Product>Aimly2</Product>
     <Title>Aimly V2</Title>
-<AssemblyName>Aimly2</AssemblyName>
+    <AssemblyName>Aimly2</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SignAssembly>False</SignAssembly>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
-  
+    <ApplicationDpiAwareness>PerMonitorV2</ApplicationDpiAwareness>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -71,6 +71,7 @@
     <PackageReference Include="MaterialDesignThemes" Version="5.3.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
     <PackageReference Include="MouseKeyHook" Version="5.7.1" />
+    <PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.256" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="SharpDX.DirectInput" Version="4.2.0" />
     <PackageReference Include="Supercluster.KDTree" Version="1.0.4" />
@@ -95,16 +96,19 @@
 		<Resource Include="Graphics\Fonts\Font Awesome 6 Brands-Regular-400.otf" />
 	</ItemGroup>
 
-	<!-- Include ViGEmClient.dll and vig.exe as content files -->
+	<!-- Include ViGEm managed DLLs and FakerInput -->
 	<ItemGroup>
-	  <Content Include="ViGEmClient_x86-64\ViGEmClient.dll">
-		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  <Content Include="Nefarius.ViGEm.Client.dll">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="FakerInputWrapper.dll">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="FakerInputDll.dll">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	  <Content Include="vig.exe">
-		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </Content>
-	  <Content Include="runtimes\**\*">
-		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>
 

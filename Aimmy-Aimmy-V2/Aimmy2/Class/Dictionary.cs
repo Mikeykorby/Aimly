@@ -15,7 +15,9 @@ namespace Aimmy2.Class
             { "Second Aim Keybind", "LMenu"},
             { "Dynamic FOV Keybind", "Left"},
             { "Emergency Stop Keybind", "Delete"},
-            { "Model Switch Keybind", "OemPipe"}
+            { "Model Switch Keybind", "OemPipe"},
+            { "Anti Recoil Keybind", "None"},
+            { "Disable Anti Recoil Keybind", "None"}
         };
 
         public static Dictionary<string, dynamic> sliderSettings = new()
@@ -45,7 +47,12 @@ namespace Aimmy2.Class
             // New features from Discord requests
             { "Anti-Recoil Strength", 10.0 },
             { "Anti-Recoil Scale", 1.0 },
-            { "Anti-Recoil Max Shots", 30 }
+            { "Anti-Recoil Max Shots", 30 },
+            { "Maximum Detections", 10 },
+            { "AR Hold Time", 0.0 },
+            { "AR Fire Rate", 100.0 },
+            { "AR Y Recoil", 0.0 },
+            { "AR X Recoil", 0.0 }
         };
 
         // Make sure the Settings Name is the EXACT Same as the Toggle Name or I will smack you :joeangy:
@@ -87,7 +94,10 @@ namespace Aimmy2.Class
             { "Anti-Recoil", false },
             { "Anti-Recoil Smooth", true },
             { "XInput Controller", false },
-            { "Show Anti-Cheat Warning", true }
+            { "Show Anti-Cheat Warning", true },
+            { "Confidence Bar", true },
+            { "Show Aim Point", true },
+            { "Smooth Tracking", true }
         };
 
         public static Dictionary<string, dynamic> minimizeState = new()
@@ -127,7 +137,9 @@ namespace Aimmy2.Class
 
         public static Dictionary<string, dynamic> filelocationState = new()
         {
-            { "ddxoft DLL Location", ""}
+            { "ddxoft DLL Location", ""},
+            { "Gun 1 Config", "" },
+            { "Gun 2 Config", "" }
         };
     }
 }

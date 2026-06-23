@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Other;
 using System.IO;
 using MessageBox = System.Windows.MessageBox;

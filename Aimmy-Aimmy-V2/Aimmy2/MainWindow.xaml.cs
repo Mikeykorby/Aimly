@@ -1,7 +1,10 @@
 using Aimmy2.Class;
 using Aimmy2.Controls;
 using Aimmy2.MouseMovementLibraries.GHubSupport;
+using Aimmy2.UISections;
 using MouseMovementLibraries.ViGEmSupport;
+using MouseMovementLibraries.XInputSupport;
+using MouseMovementLibraries.DirectInputSupport;
 using Aimmy2.Other;
 using Aimmy2.Theme;
 using Aimmy2.UILibrary;
@@ -12,6 +15,7 @@ using Other;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using UILibrary;
@@ -53,6 +57,9 @@ namespace Aimmy2
         public static DetectedPlayerWindow DPWindow => _dpWindow.Value;
         public static GithubManager githubManager => _githubManager.Value;
         public UI uiManager => _uiManager.Value;
+        
+        private readonly Lazy<Aimmy2.AILogic.AntiRecoilManager> _arManager = new(() => new Aimmy2.AILogic.AntiRecoilManager());
+        public Aimmy2.AILogic.AntiRecoilManager arManager => _arManager.Value;
 
         #endregion
 
@@ -69,7 +76,7 @@ namespace Aimmy2
         private double _currentGradientAngle;
 
         // Menu names constant
-        private static readonly string[] MenuNames = { "AimMenu", "ModelMenu", "SettingsMenu", "AboutMenu" };
+        private static readonly string[] MenuNames = { "AimMenu", "ControllerMenu", "ModelMenu", "SettingsMenu", "AboutMenu" };
 
         #endregion
 
@@ -93,6 +100,14 @@ namespace Aimmy2
                 // This ensures minimize states are loaded from file before menu initialization
                 await LoadConfigurationsAsync();
 
+                // Apply UI font and admin font rendering fix before loading menus
+                ApplyUIFont();
+                if (Other.HidHideManager.IsAdmin())
+                {
+                    TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+                    TextOptions.SetTextRenderingMode(this, TextRenderingMode.ClearType);
+                }
+
                 // Now load the initial menu - it will use the loaded minimize states
                 LoadInitialMenu();
 
@@ -102,10 +117,219 @@ namespace Aimmy2
                 UpdateHeaderStatuses();
                 ApplyThemeGradients();
                 ThemeManager.LoadMediaSettings();
+
+                // Apply Light Theme if saved
+                if (Dictionary.toggleState.TryGetValue("Light Theme", out var lightVal) && lightVal is bool lightEnabled && lightEnabled)
+                {
+                    ThemeManager.ApplyLightMode(true);
+                }
+
+                // Beta UI is temporarily disabled to prevent performance issues.
+                // If Beta UI was saved as enabled in the config, force it off.
+                if (Dictionary.toggleState.TryGetValue("Beta UI", out var betaUiVal) && betaUiVal is bool betaEnabled && betaEnabled)
+                {
+                    Dictionary.toggleState["Beta UI"] = false;
+                }
+                // ApplyBetaUITheme(true); // Disabled - causes lag
+
+                // Start the animated glow border effect
+                StartGlowAnimation();
+
+                // Add premium window entrance animation
+                AnimateWindowEntrance();
+
+                // Add sidebar button hover animations
+                AddHoverAnimationsToNavButtons();
             }
             catch (Exception ex)
             {
                 ShowError($"Error during startup: {ex.Message}", ex);
+            }
+        }
+        
+        private void AnimateWindowEntrance()
+        {
+            this.Opacity = 0;
+            var fadeAnim = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(400),
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            this.BeginAnimation(Window.OpacityProperty, fadeAnim);
+
+            if (this.Content is System.Windows.FrameworkElement rootElement)
+            {
+                rootElement.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+                var scaleTransform = new System.Windows.Media.ScaleTransform(0.95, 0.95);
+                rootElement.RenderTransform = scaleTransform;
+
+                var scaleAnimX = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0.95,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(500),
+                    EasingFunction = new System.Windows.Media.Animation.BackEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+
+                var scaleAnimY = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0.95,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(500),
+                    EasingFunction = new System.Windows.Media.Animation.BackEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+
+                scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleAnimX);
+                scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleAnimY);
+            }
+        }
+
+        private void AddHoverAnimationsToNavButtons()
+        {
+            var buttons = new System.Windows.Controls.Button[] { Menu1B, Menu2B, Menu3B, Menu4B, Menu5B };
+            foreach (var btn in buttons)
+            {
+                if (btn == null) continue;
+                
+                btn.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+                var scaleTransform = new System.Windows.Media.ScaleTransform(1, 1);
+                btn.RenderTransform = scaleTransform;
+
+                btn.MouseEnter += (s, e) =>
+                {
+                    var scaleAnim = new System.Windows.Media.Animation.DoubleAnimation
+                    {
+                        To = 1.15, // Scale up more visibly
+                        Duration = TimeSpan.FromMilliseconds(150),
+                        EasingFunction = new System.Windows.Media.Animation.QuarticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                    };
+                    scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleAnim);
+                    scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleAnim);
+                };
+
+                btn.MouseLeave += (s, e) =>
+                {
+                    var scaleAnim = new System.Windows.Media.Animation.DoubleAnimation
+                    {
+                        To = 1.0,
+                        Duration = TimeSpan.FromMilliseconds(250),
+                        EasingFunction = new System.Windows.Media.Animation.QuarticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                    };
+                    scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleAnim);
+                    scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleAnim);
+                };
+            }
+        }
+
+        /// <summary>
+        /// Start the animated gradient glow effect on the window border
+        /// </summary>
+        private void StartGlowAnimation()
+        {
+            if (GlowBorder == null) return;
+
+            try
+            {
+                // Create a smooth pulsing glow effect with easing
+                var glowAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0.3,
+                    To = 0.7,
+                    Duration = TimeSpan.FromSeconds(2.5),
+                    RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                    AutoReverse = true,
+                    EasingFunction = new System.Windows.Media.Animation.SineEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                    }
+                };
+
+                GlowBorder.BeginAnimation(Border.OpacityProperty, glowAnimation);
+
+                // Animate the drop shadow blur for a softer glow effect
+                if (GlowBorder.Effect is System.Windows.Media.Effects.DropShadowEffect shadowEffect)
+                {
+                    var blurAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                    {
+                        From = 10,
+                        To = 25,
+                        Duration = TimeSpan.FromSeconds(2.5),
+                        RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                        AutoReverse = true,
+                        EasingFunction = new System.Windows.Media.Animation.SineEase
+                        {
+                            EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                        }
+                    };
+
+                    shadowEffect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty, blurAnimation);
+
+                    // Also animate shadow opacity for a breathing effect
+                    var shadowOpacityAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                    {
+                        From = 0.5,
+                        To = 1.0,
+                        Duration = TimeSpan.FromSeconds(2.5),
+                        RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                        AutoReverse = true,
+                        EasingFunction = new System.Windows.Media.Animation.SineEase
+                        {
+                            EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                        }
+                    };
+
+                    shadowEffect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, shadowOpacityAnimation);
+                }
+
+                // Animate gradient stops for a subtle color shift effect (only if GlowGradient exists)
+                if (GlowGradient is LinearGradientBrush gradientBrush && gradientBrush.GradientStops.Count >= 2)
+                {
+                    var baseColor = System.Windows.Media.Color.FromRgb(0x72, 0x2E, 0xD1);
+                    var lightColor = System.Windows.Media.Color.FromRgb(0x9B, 0x5A, 0xF0);
+                    var darkColor = System.Windows.Media.Color.FromRgb(0x53, 0x1D, 0xAB);
+
+                    // Animate the first gradient stop color (main accent)
+                    var colorAnimation1 = new System.Windows.Media.Animation.ColorAnimation
+                    {
+                        From = baseColor,
+                        To = lightColor,
+                        Duration = TimeSpan.FromSeconds(4),
+                        RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                        AutoReverse = true,
+                        EasingFunction = new System.Windows.Media.Animation.SineEase
+                        {
+                            EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                        }
+                    };
+
+                    if (gradientBrush.GradientStops[0] != null)
+                        gradientBrush.GradientStops[0].BeginAnimation(GradientStop.ColorProperty, colorAnimation1);
+
+                    // Animate the second gradient stop color (darker accent)
+                    if (gradientBrush.GradientStops.Count > 1)
+                    {
+                        var colorAnimation2 = new System.Windows.Media.Animation.ColorAnimation
+                        {
+                            From = darkColor,
+                            To = baseColor,
+                            Duration = TimeSpan.FromSeconds(3.5),
+                            RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                            AutoReverse = true,
+                            EasingFunction = new System.Windows.Media.Animation.SineEase
+                            {
+                                EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                            }
+                        };
+
+                        gradientBrush.GradientStops[1].BeginAnimation(GradientStop.ColorProperty, colorAnimation2);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warning, $"Glow animation error: {ex.Message}", false);
             }
         }
 
@@ -226,6 +450,12 @@ namespace Aimmy2
                 {
                     SaveDictionary.LoadJSON(dict, path);
                 }
+                
+                // Ensure Hide Real Controller is always false on startup
+                if (Dictionary.toggleState.ContainsKey("Hide Real Controller"))
+                {
+                    Dictionary.toggleState["Hide Real Controller"] = false;
+                }
             });
 
             // Load these on UI thread since they might show notifications
@@ -252,16 +482,30 @@ namespace Aimmy2
             }
         }
 
+        private void ApplyUIFont()
+        {
+            if (Dictionary.dropdownState.TryGetValue("UI Font", out var fontObj) && fontObj != null)
+            {
+                var fontName = fontObj.ToString() ?? "Atkinson Hyperlegible";
+                ApplyFontToUI(fontName);
+            }
+        }
+
         private void SetupKeybindings()
         {
             var keybinds = new[]
             {
                 "Aim Keybind", "Second Aim Keybind", "Dynamic FOV Keybind",
-                "Emergency Stop Keybind", "Model Switch Keybind"
+                "Emergency Stop Keybind", "Model Switch Keybind",
+                "Anti Recoil Keybind", "Disable Anti Recoil Keybind"
             };
 
             foreach (var keybind in keybinds)
             {
+                if (!Dictionary.bindingSettings.ContainsKey(keybind))
+                {
+                    Dictionary.bindingSettings[keybind] = "None"; // Default fallback
+                }
                 bindingManager.SetupDefault(keybind, Dictionary.bindingSettings[keybind].ToString());
             }
         }
@@ -322,7 +566,22 @@ namespace Aimmy2
                 // Update model status
                 if (FindName("HeaderModelStatus") is System.Windows.Controls.TextBlock modelText)
                 {
-                    modelText.Text = Dictionary.lastLoadedModel == "N/A" ? "Model: None" : $"Model: {Dictionary.lastLoadedModel}";
+                    bool modelLoaded = Dictionary.lastLoadedModel != "N/A";
+                    modelText.Text = modelLoaded ? $"Model: {Dictionary.lastLoadedModel}" : "Model: None";
+                    
+                    // Show/hide animated status dot
+                    if (FindName("ModelStatusDot") is System.Windows.Shapes.Ellipse modelDot)
+                    {
+                        modelDot.Visibility = modelLoaded 
+                            ? System.Windows.Visibility.Visible 
+                            : System.Windows.Visibility.Collapsed;
+                        
+                        // Start animation when visible
+                        if (modelLoaded)
+                        {
+                            StartStatusDotAnimation(modelDot, 0.8);
+                        }
+                    }
                 }
 
                 // Update trigger status
@@ -330,6 +589,20 @@ namespace Aimmy2
                 {
                     bool triggerOn = Dictionary.toggleState.TryGetValue("Auto Trigger", out var val) && val is bool b && b;
                     triggerText.Text = triggerOn ? "Trigger: On" : "Trigger: Off";
+                    
+                    // Show/hide animated status dot
+                    if (FindName("TriggerStatusDot") is System.Windows.Shapes.Ellipse triggerDot)
+                    {
+                        triggerDot.Visibility = triggerOn 
+                            ? System.Windows.Visibility.Visible 
+                            : System.Windows.Visibility.Collapsed;
+                        
+                        // Start animation when visible
+                        if (triggerOn)
+                        {
+                            StartStatusDotAnimation(triggerDot, 0.6);
+                        }
+                    }
                 }
 
                 // Update display status
@@ -338,6 +611,80 @@ namespace Aimmy2
                     displayText.Text = $"Display: {DisplayManager.CurrentDisplayIndex + 1}";
                 }
             });
+        }
+        
+        /// <summary>
+        /// Start pulsing animation for a status dot using scale transform
+        /// </summary>
+        private void StartStatusDotAnimation(System.Windows.Shapes.Ellipse dot, double durationSeconds)
+        {
+            if (dot == null) return;
+
+            try
+            {
+                // Stop any existing animations on this element
+                dot.BeginAnimation(System.Windows.Shapes.Ellipse.OpacityProperty, null);
+                dot.RenderTransform?.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+                dot.RenderTransform?.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+
+                // Get or create the scale transform
+                var scaleTransform = dot.RenderTransform as System.Windows.Media.ScaleTransform;
+                if (scaleTransform == null)
+                {
+                    scaleTransform = new System.Windows.Media.ScaleTransform(1, 1);
+                    dot.RenderTransform = scaleTransform;
+                    dot.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+                }
+
+                // Create smooth scale animation for a pulsing "heartbeat" effect
+                var scaleXAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 1.0,
+                    To = 1.3,
+                    Duration = TimeSpan.FromSeconds(durationSeconds / 2),
+                    AutoReverse = true,
+                    RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                    EasingFunction = new System.Windows.Media.Animation.SineEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                    }
+                };
+
+                var scaleYAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 1.0,
+                    To = 1.3,
+                    Duration = TimeSpan.FromSeconds(durationSeconds / 2),
+                    AutoReverse = true,
+                    RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                    EasingFunction = new System.Windows.Media.Animation.SineEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                    }
+                };
+
+                // Also add a subtle opacity animation for depth
+                var opacityAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 1.0,
+                    To = 0.6,
+                    Duration = TimeSpan.FromSeconds(durationSeconds),
+                    AutoReverse = true,
+                    RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                    EasingFunction = new System.Windows.Media.Animation.SineEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut
+                    }
+                };
+
+                scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleXAnimation);
+                scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleYAnimation);
+                dot.BeginAnimation(System.Windows.Shapes.Ellipse.OpacityProperty, opacityAnimation);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warning, $"Status dot animation error: {ex.Message}", false);
+            }
         }
 
         private void ShowError(string message, Exception ex)
@@ -402,6 +749,31 @@ namespace Aimmy2
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => DragMove();
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void Maximize_Click(object sender, RoutedEventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+                Maximize.Content = "\xE922"; // Maximize icon
+            }
+            else
+            {
+                WindowState = WindowState.Maximized;
+                Maximize.Content = "\xE923"; // Restore down icon
+            }
+        }
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                Maximize.Content = "\xE923"; // Restore down icon
+            }
+            else
+            {
+                Maximize.Content = "\xE922"; // Maximize icon
+            }
+        }
+
         private void Exit_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -432,6 +804,37 @@ namespace Aimmy2
             Application.Current.Shutdown();
         }
 
+        private void HandleAntiRecoil(bool start)
+        {
+            if (!Dictionary.toggleState["Anti-Recoil"]) return;
+
+            if (start)
+            {
+                arManager.IndependentMousePress = 0;
+                arManager.HoldDownTimer.Start();
+            }
+            else
+            {
+                arManager.HoldDownTimer.Stop();
+                arManager.IndependentMousePress = 0;
+            }
+        }
+
+        private void DisableAntiRecoil()
+        {
+            if (!Dictionary.toggleState["Anti-Recoil"]) return;
+
+            Dictionary.toggleState["Anti-Recoil"] = false;
+            
+            // Check if T_AntiRecoil is in the toggleInstances list, as it might not be initialized yet
+            if (toggleInstances.TryGetValue("Anti-Recoil", out AToggle toggle))
+            {
+                UpdateToggleUI(toggle, false);
+            }
+            
+            new NoticeBar("[Disable Anti Recoil Keybind] Disabled Anti-Recoil.", 4000).Show();
+        }
+
         private void DisableAllFeatures()
         {
             var features = new[] { "Aim Assist", "FOV", "Show Detected Player" };
@@ -456,6 +859,9 @@ namespace Aimmy2
             }
             // Cleanup ViGEm virtual controller
             VirtualControllerOutput.Disconnect();
+            
+            // Clean up HidHide cloaking
+            Other.HidHideManager.DisableAndCleanup();
         }
 
         private void SaveAllConfigurations()
@@ -506,6 +912,7 @@ namespace Aimmy2
             "ModelMenu" => new ModelMenuControl(),
             "SettingsMenu" => new SettingsMenuControl(),
             "AboutMenu" => new AboutMenuControl(),
+            "ControllerMenu" => new ControllerMenuControl(),
             _ => throw new ArgumentException($"Unknown menu: {menuName}")
         };
 
@@ -535,6 +942,10 @@ namespace Aimmy2
                     case AboutMenuControl aboutMenu:
                         aboutMenu.Initialize(this);
                         UpdateAboutSpecs();
+                        break;
+
+                    case ControllerMenuControl controllerMenu:
+                        controllerMenu.Initialize(this);
                         break;
                 }
             }
@@ -567,6 +978,12 @@ namespace Aimmy2
             ContentArea.Children.Add(control);
             _currentControl = control;
             UpdateCurrentScrollViewer(menuName, control);
+
+            if (IsBetaUIEnabled)
+            {
+                var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+                ApplyM3ColorsToActiveMenu(scheme);
+            }
         }
 
         private void UpdateCurrentScrollViewer(string menuName, UserControl control)
@@ -592,11 +1009,25 @@ namespace Aimmy2
 
             try
             {
+                var targetButton = (Button)sender;
+                Thickness targetMargin;
+                if (IsBetaUIEnabled)
+                {
+                    targetMargin = new Thickness(8, targetButton.Margin.Top + 9, 0, 0);
+                    var scheme = ThemeManager.CurrentScheme ?? ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+                    _currentMenu = newMenuName;
+                    UpdateNavButtonColors(scheme);
+                }
+                else
+                {
+                    targetMargin = targetButton.Margin;
+                }
+
                 Animator.ObjectShift(
                     TimeSpan.FromMilliseconds(150), // Fade between menu buttons
                     MenuHighlighter,
                     MenuHighlighter.Margin,
-                    ((Button)sender).Margin);
+                    targetMargin);
 
                 await SwitchToMenu(newMenuName);
                 _currentMenu = newMenuName;
@@ -617,12 +1048,12 @@ namespace Aimmy2
         {
             if (_currentControl != null)
             {
-                Animator.FadeOut(_currentControl);
-                await Task.Delay(150); // Fade between menu content
+                Animator.SlideAndFadeOut(_currentControl, -15);
+                await Task.Delay(200); // Wait for slide out animation
             }
 
             LoadMenu(menuName);
-            Animator.Fade(_currentControl!);
+            Animator.SlideAndFadeIn(_currentControl!, 15);
         }
 
         #endregion
@@ -666,7 +1097,8 @@ namespace Aimmy2
                 },
                 ["X Axis Percentage Adjustment"] = () => UpdateSliderVisibility(uiManager),
                 ["Y Axis Percentage Adjustment"] = () => UpdateSliderVisibility(uiManager),
-                ["Auto Trigger"] = () => UpdateHeaderStatuses()
+                ["Auto Trigger"] = () => UpdateHeaderStatuses(),
+                ["Beta UI"] = () => ApplyBetaUITheme(Dictionary.toggleState["Beta UI"])
             };
 
             if (actions.TryGetValue(title, out var action))
@@ -714,6 +1146,488 @@ namespace Aimmy2
             }
         }
 
+        private void ApplyBetaUITheme(bool enabled)
+        {
+            // Beta UI is temporarily disabled to prevent performance issues.
+            return;
+        }
+
+        private void DISABLED_ApplyBetaUITheme(bool enabled)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (enabled)
+                {
+                    var scheme = ThemeManager.GenerateMaterial3Scheme(ThemeManager.ThemeColor);
+
+                    // ── Window shape ──
+                    MainBorder.CornerRadius = new CornerRadius(28);
+                    GlowBorder.CornerRadius = new CornerRadius(28);
+
+                    // ── Surface background: solid surface color ──
+                    MainBorder.Background = new SolidColorBrush(scheme.Surface);
+                    MainBorder.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                    MainBorder.BorderThickness = new Thickness(1);
+
+                    // ── Elevation shadow: M3 Level 2 ──
+                    MainBorder.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius = 24,
+                        Opacity = 0.28,
+                        Color = Colors.Black,
+                        ShadowDepth = 6
+                    };
+
+                    // ── Navigation Rail: surface-container and width 72 ──
+                    Sidebar.Width = 72;
+                    Sidebar.Background = new SolidColorBrush(scheme.SurfaceContainer);
+                    // Round the rail's inner left corners to match window rounding
+                    if (Sidebar is Grid sidebarGrid)
+                    {
+                        var railBorder = new Border
+                        {
+                            CornerRadius = new CornerRadius(28, 0, 0, 28),
+                            Background = new SolidColorBrush(scheme.SurfaceContainer),
+                            ClipToBounds = true
+                        };
+                    }
+
+                    // ── Active indicator pill on nav rail ──
+                    if (MenuHighlighter != null)
+                    {
+                        MenuHighlighter.Width = 56;
+                        MenuHighlighter.Height = 32;
+                        MenuHighlighter.Background = new SolidColorBrush(scheme.SecondaryContainer);
+                        MenuHighlighter.Effect = null;
+                        MenuHighlighter.ClipToBounds = true;
+                        MenuHighlighter.CornerRadius = new CornerRadius(16);
+                        MenuHighlighter.Opacity = 1.0;
+                    }
+
+                    // ── Nav rail button width ──
+                    foreach (var menuButton in new[] { Menu1B, Menu2B, Menu3B, Menu4B, Menu5B })
+                    {
+                        if (menuButton != null)
+                        {
+                            menuButton.Width = 72;
+                        }
+                    }
+
+                    // ── Update highlighter position & button colors immediately ──
+                    UpdateHighlighterPosition(true);
+                    UpdateNavButtonColors(scheme);
+
+                    // ── Content area: surface ──
+                    ContentArea.Background = new SolidColorBrush(scheme.Surface);
+                    ContentArea.Margin = new Thickness(72, 56, 0, 0);
+
+                    // ── Top app bar: surface-container ──
+                    Topbar.Background = new SolidColorBrush(scheme.SurfaceContainer);
+
+                    // ── Top bar text colors ──
+                    if (HeaderModelStatus != null)
+                        HeaderModelStatus.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+                    if (HeaderTriggerStatus != null)
+                        HeaderTriggerStatus.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+                    if (HeaderDisplayStatus != null)
+                        HeaderDisplayStatus.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+
+                    // ── Top status badges: pill shape & surface container background ──
+                    if (ModelStatusBadge != null)
+                    {
+                        ModelStatusBadge.CornerRadius = new CornerRadius(28);
+                        ModelStatusBadge.Background = new SolidColorBrush(scheme.SurfaceContainerHighest);
+                        ModelStatusBadge.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                    }
+                    if (TriggerStatusBadge != null)
+                    {
+                        TriggerStatusBadge.CornerRadius = new CornerRadius(28);
+                        TriggerStatusBadge.Background = new SolidColorBrush(scheme.SurfaceContainerHighest);
+                        TriggerStatusBadge.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                    }
+                    if (DisplayStatusBadge != null)
+                    {
+                        DisplayStatusBadge.CornerRadius = new CornerRadius(28);
+                        DisplayStatusBadge.Background = new SolidColorBrush(scheme.SurfaceContainerHighest);
+                        DisplayStatusBadge.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                    }
+
+                    // ── Glow border: subtle primary tint ──
+                    GlowBorder.Opacity = 0.3;
+                    if (GlowBorder.BorderBrush is LinearGradientBrush glowGrad)
+                    {
+                        foreach (var stop in glowGrad.GradientStops)
+                        {
+                            stop.Color = scheme.Primary;
+                        }
+                    }
+
+                    // ── Dynamic Resources for Tooltips/Tabs ──
+                    this.Resources["M3TabUnderlineBrush"] = new SolidColorBrush(scheme.Primary);
+                    this.Resources["M3TooltipBackground"] = new SolidColorBrush(scheme.SurfaceContainerHighest);
+                    this.Resources["M3TooltipForeground"] = new SolidColorBrush(scheme.OnSurface);
+                    this.Resources["M3TooltipAccentBrush"] = new SolidColorBrush(scheme.Primary);
+                    this.Resources["M3TooltipBorderBrush"] = Brushes.Transparent;
+                    this.Resources["M3TooltipCornerRadius"] = new CornerRadius(8);
+
+                    // Notify all listeners that Beta UI is now active (so internal controls update themselves)
+                    ThemeManager.SetBetaUIState(true);
+
+                    // Apply M3 colors & dynamic card groupings to active menu
+                    ApplyM3ColorsToActiveMenu(scheme);
+
+                    // Apply Font Awesome 6 icons to navigation rail
+                    IconManager.UpdateNavRailIcons(true);
+                }
+                else
+                {
+                    // ── Restore original styling ──
+                    MainBorder.CornerRadius = new CornerRadius(5);
+                    GlowBorder.CornerRadius = new CornerRadius(5);
+
+                    var brush = new LinearGradientBrush
+                    {
+                        EndPoint = new Point(0.5, 1),
+                        StartPoint = new Point(0, 0)
+                    };
+                    brush.GradientStops.Add(new GradientStop(Colors.Black, 0.27));
+                    brush.GradientStops.Add(new GradientStop(Color.FromArgb(0xFF, 0x12, 0x03, 0x38), 1.0));
+                    MainBorder.Background = brush;
+
+                    Sidebar.Width = 50;
+                    Sidebar.Background = null;
+                    ContentArea.Background = null;
+                    ContentArea.Margin = new Thickness(50, 56, 0, 0);
+                    Topbar.Background = new SolidColorBrush(Color.FromArgb(0x12, 0, 0, 0));
+
+                    MainBorder.Effect = null;
+                    MainBorder.BorderBrush = new SolidColorBrush(Colors.Black);
+                    MainBorder.BorderThickness = new Thickness(1, 1, 1, 1);
+
+                    // Restore nav rail highlighter
+                    if (MenuHighlighter != null)
+                    {
+                        MenuHighlighter.Width = 50;
+                        MenuHighlighter.Height = 50;
+                        MenuHighlighter.CornerRadius = new CornerRadius(0);
+                        MenuHighlighter.Opacity = 1.0;
+                        MenuHighlighter.Background = new RadialGradientBrush(
+                            new GradientStopCollection
+                            {
+                                new GradientStop(ThemeManager.ThemeColor, 0),
+                                new GradientStop(Color.FromArgb(0x33, ThemeManager.ThemeColor.R, ThemeManager.ThemeColor.G, ThemeManager.ThemeColor.B), 0.3),
+                                new GradientStop(Colors.Transparent, 0.9)
+                            });
+                        MenuHighlighter.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 5 };
+                    }
+
+                    // Restore nav buttons width & foreground
+                    foreach (var menuButton in new[] { Menu1B, Menu2B, Menu3B, Menu4B, Menu5B })
+                    {
+                        if (menuButton != null)
+                        {
+                            menuButton.Width = 50;
+                            menuButton.Foreground = new SolidColorBrush(Colors.White);
+                        }
+                    }
+
+                    // Restore position
+                    UpdateHighlighterPosition(false);
+
+                    // Restore header text colors
+                    var headerWhite = new SolidColorBrush(Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF));
+                    if (HeaderModelStatus != null)
+                        HeaderModelStatus.Foreground = headerWhite;
+                    if (HeaderTriggerStatus != null)
+                        HeaderTriggerStatus.Foreground = headerWhite;
+                    if (HeaderDisplayStatus != null)
+                        HeaderDisplayStatus.Foreground = headerWhite;
+
+                    // ── Restore status badge styling ──
+                    if (ModelStatusBadge != null)
+                    {
+                        ModelStatusBadge.CornerRadius = new CornerRadius(8);
+                        ModelStatusBadge.Background = new SolidColorBrush(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF));
+                        ModelStatusBadge.BorderBrush = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+                    }
+                    if (TriggerStatusBadge != null)
+                    {
+                        TriggerStatusBadge.CornerRadius = new CornerRadius(8);
+                        TriggerStatusBadge.Background = new SolidColorBrush(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF));
+                        TriggerStatusBadge.BorderBrush = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+                    }
+                    if (DisplayStatusBadge != null)
+                    {
+                        DisplayStatusBadge.CornerRadius = new CornerRadius(8);
+                        DisplayStatusBadge.Background = new SolidColorBrush(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF));
+                        DisplayStatusBadge.BorderBrush = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+                    }
+
+                    // Restore glow
+                    GlowBorder.Opacity = 0.6;
+
+                    // Revert navigation rail icons to Segoe MDL2
+                    IconManager.UpdateNavRailIcons(false);
+
+                    // ── Revert Dynamic Resources ──
+                    this.Resources["M3TabUnderlineBrush"] = new SolidColorBrush(Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
+                    this.Resources["M3TooltipBackground"] = new SolidColorBrush(Color.FromRgb(0x19, 0x19, 0x19));
+                    this.Resources["M3TooltipForeground"] = Brushes.White;
+                    this.Resources["M3TooltipAccentBrush"] = new SolidColorBrush(ThemeManager.ThemeColor);
+                    this.Resources["M3TooltipBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
+                    this.Resources["M3TooltipCornerRadius"] = new CornerRadius(6);
+
+                    // Notify all listeners that Beta UI is now inactive
+                    ThemeManager.SetBetaUIState(false);
+                }
+            });
+        }
+
+        private Button? GetButtonForMenu(string menuName)
+        {
+            return menuName switch
+            {
+                "AimMenu" => Menu1B,
+                "ControllerMenu" => Menu2B,
+                "ModelMenu" => Menu3B,
+                "SettingsMenu" => Menu4B,
+                "AboutMenu" => Menu5B,
+                _ => null
+            };
+        }
+
+        private void UpdateHighlighterPosition(bool isBetaActive)
+        {
+            if (MenuHighlighter == null) return;
+            var activeBtn = GetButtonForMenu(_currentMenu);
+            if (activeBtn == null) return;
+
+            Thickness targetMargin;
+            if (isBetaActive)
+            {
+                double buttonHeight = activeBtn.Height;
+                if (double.IsNaN(buttonHeight) || buttonHeight <= 0) buttonHeight = 50;
+
+                double leftOffset = (72 - 56) / 2;
+                double topOffset = (buttonHeight - 32) / 2;
+                targetMargin = new Thickness(leftOffset, activeBtn.Margin.Top + topOffset, 0, 0);
+            }
+            else
+            {
+                targetMargin = activeBtn.Margin;
+            }
+            MenuHighlighter.Margin = targetMargin;
+        }
+
+        private void UpdateNavButtonColors(ThemeManager.Material3Scheme scheme)
+        {
+            var activeBtn = GetButtonForMenu(_currentMenu);
+            foreach (var menuButton in new[] { Menu1B, Menu2B, Menu3B, Menu4B, Menu5B })
+            {
+                if (menuButton != null)
+                {
+                    if (menuButton == activeBtn)
+                    {
+                        menuButton.Foreground = new SolidColorBrush(scheme.OnSecondaryContainer);
+                    }
+                    else
+                    {
+                        menuButton.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+                    }
+                }
+            }
+        }
+
+        private bool IsBetaUIEnabled => Dictionary.toggleState.TryGetValue("Beta UI", out var val) && val is bool b && b;
+
+        private Border? FindMainOuterBorder(DependencyObject parent, bool allowDescend = true)
+        {
+            if (parent is Border b && 
+                b.Name != "SwitchBorder" && 
+                b.Name != "SwitchMoving" && 
+                b.Name != "KeyNotifierBorder" && 
+                b.Name != "ColorChangingBorder")
+                return b;
+
+            if (!allowDescend) return null;
+            if (parent is StackPanel || parent is ScrollViewer || parent is ListBox || parent is TabControl)
+                return null;
+
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                bool canDescend = !(child is UserControl) && !(child is StackPanel) && !(child is ScrollViewer) && !(child is ListBox);
+                var border = FindMainOuterBorder(child, canDescend);
+                if (border != null)
+                    return border;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Walk the current active menu and apply Material 3 surface/border colors to inner controls
+        /// </summary>
+        private void ApplyM3ColorsToActiveMenu(ThemeManager.Material3Scheme scheme)
+        {
+            if (ContentArea.Children.Count == 0) return;
+
+            var currentMenu = ContentArea.Children[0];
+            if (currentMenu == null) return;
+
+            WalkAndApplyM3(currentMenu, scheme, 0);
+        }
+
+        private void WalkAndApplyM3(DependencyObject? element, ThemeManager.Material3Scheme scheme, int depth)
+        {
+            if (element == null) return;
+
+            // ── ScrollViewer: transparent background ──
+            if (element is ScrollViewer sv)
+            {
+                sv.Background = Brushes.Transparent;
+            }
+
+            // ── StackPanel: dynamically group child component borders into unified outlined cards ──
+            if (element is StackPanel stackPanel && stackPanel.Name != "ASP1" && stackPanel.Name != "ASP2")
+            {
+                // Find all child items that have outer borders
+                var cardItems = new System.Collections.Generic.List<(FrameworkElement element, Border border)>();
+                int childCount = stackPanel.Children.Count;
+                for (int i = 0; i < childCount; i++)
+                {
+                    var child = stackPanel.Children[i] as FrameworkElement;
+                    if (child == null) continue;
+                    if (child.Visibility == Visibility.Collapsed) continue;
+
+                    // Skip if the child itself is a spacer (spacers don't have borders)
+                    if (child.GetType().Name == "ASpacer") continue;
+
+                    var border = FindMainOuterBorder(child);
+                    if (border != null)
+                    {
+                        cardItems.Add((child, border));
+                    }
+                }
+
+                // Apply dynamic M3 outline card geometry
+                int cardCount = cardItems.Count;
+                for (int i = 0; i < cardCount; i++)
+                {
+                    var item = cardItems[i];
+                    var childTypeName = item.element.GetType().Name;
+
+                    bool isStart = (i == 0) || (childTypeName == "ATitle");
+                    bool isEnd = (i == cardCount - 1) || 
+                                 (childTypeName == "ARectangleBottom") || 
+                                 (i + 1 < cardCount && cardItems[i + 1].element.GetType().Name == "ATitle");
+
+                    // ATitle is always a start of a card
+                    if (childTypeName == "ATitle")
+                    {
+                        isStart = true;
+                    }
+
+                    // If the next item is ARectangleBottom, the current item is the end (since ARectangleBottom is collapsed/height 0)
+                    if (i + 1 < cardCount && cardItems[i + 1].element.GetType().Name == "ARectangleBottom")
+                    {
+                        isEnd = true;
+                    }
+
+                    // Apply outlined card geometry (28px rounded corners for Beta UI)
+                    if (isStart && isEnd)
+                    {
+                        item.border.CornerRadius = new CornerRadius(28);
+                        item.border.BorderThickness = new Thickness(1);
+                    }
+                    else if (isStart)
+                    {
+                        item.border.CornerRadius = new CornerRadius(28, 28, 0, 0);
+                        item.border.BorderThickness = new Thickness(1, 1, 1, 1);
+                    }
+                    else if (isEnd)
+                    {
+                        item.border.CornerRadius = new CornerRadius(0, 0, 28, 28);
+                        item.border.BorderThickness = new Thickness(1, 0, 1, 1);
+                    }
+                    else
+                    {
+                        item.border.CornerRadius = new CornerRadius(0);
+                        item.border.BorderThickness = new Thickness(1, 0, 1, 1);
+                    }
+
+                    item.border.Background = new SolidColorBrush(scheme.SurfaceContainerHigh);
+                    item.border.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                }
+            }
+
+            // ── Border: individual components styling (fallback / skip system items) ──
+            if (element is Border borderElement)
+            {
+                if (borderElement.Name == "SwitchBorder" || 
+                    borderElement.Name == "SwitchMoving" || 
+                    borderElement.Name == "KeyNotifierBorder" || 
+                    borderElement.Name == "ColorChangingBorder")
+                {
+                    // Handled by component's own Beta UI logic
+                }
+                else if (borderElement.Name == "MenuHighlighter" || 
+                         borderElement.Name == "GlowBorder" || 
+                         borderElement.Name == "MainBorder")
+                {
+                    // Styled by MainWindow top-level
+                }
+                else if (borderElement.Parent is StackPanel)
+                {
+                    // Already styled by parent StackPanel pass
+                }
+                else
+                {
+                    // Fallback for standalone borders: round 16px, SurfaceContainerHigh
+                    var bgHex = borderElement.Background?.ToString() ?? "";
+                    if (bgHex.Contains("3C3C3C") || bgHex.Contains("3A3A3A") || bgHex.Contains("2F3A3A3A") || bgHex.Contains("3F3C3C3C"))
+                    {
+                        borderElement.Background = new SolidColorBrush(scheme.SurfaceContainerHigh);
+                        borderElement.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                        borderElement.BorderThickness = new Thickness(1);
+                        borderElement.CornerRadius = new CornerRadius(16);
+                    }
+                    else if (bgHex.Contains("1EFFFFFF") || bgHex.Contains("2AFFFFFF")) // topbar status pills
+                    {
+                        borderElement.Background = new SolidColorBrush(scheme.SurfaceContainerHigh);
+                        borderElement.BorderBrush = new SolidColorBrush(scheme.OutlineVariant);
+                        borderElement.BorderThickness = new Thickness(1);
+                        borderElement.CornerRadius = new CornerRadius(12);
+                    }
+                }
+            }
+
+            // ── Label: M3 text colors ──
+            if (element is Label label)
+            {
+                if (label.FontWeight == FontWeights.Bold)
+                    label.Foreground = new SolidColorBrush(scheme.OnSurface);
+                else
+                    label.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+            }
+
+            // ── TextBlock: M3 text hierarchy ──
+            if (element is TextBlock tb)
+            {
+                if (tb.FontWeight == FontWeights.SemiBold || tb.FontWeight == FontWeights.Bold)
+                    tb.Foreground = new SolidColorBrush(scheme.OnSurface);
+                else
+                    tb.Foreground = new SolidColorBrush(scheme.OnSurfaceVariant);
+            }
+
+            // ── Recurse into children ──
+            int count = VisualTreeHelper.GetChildrenCount(element);
+            for (int i = 0; i < count; i++)
+            {
+                WalkAndApplyM3(VisualTreeHelper.GetChild(element, i), scheme, depth + 1);
+            }
+        }
+
         #endregion
 
         #region UI Helper Methods
@@ -749,6 +1663,46 @@ namespace Aimmy2
             return dropdownitem;
         }
 
+        /// <summary>
+        /// Apply a font across the entire application by updating the Window and resource dictionary.
+        /// Controls that inherit font or reference a dynamic resource will pick up the change.
+        /// </summary>
+        public void ApplyFontToUI(string fontName)
+        {
+            try
+            {
+                FontFamily font;
+                if (fontName == "Atkinson Hyperlegible")
+                {
+                    font = new FontFamily("pack://application:,,,/Graphics/Fonts/#Atkinson Hyperlegible");
+                }
+                else
+                {
+                    font = new FontFamily(fontName);
+                }
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    // Update the resource so new controls pick up the new font
+                    Application.Current.Resources["Atkinson Hyperlegible"] = font;
+                    Application.Current.Resources["MaterialDesignFont"] = font;
+
+                    this.FontFamily = font;
+                    foreach (Window window in Application.Current.Windows)
+                    {
+                        window.FontFamily = font;
+                    }
+
+                    // Force layout refresh on visual tree so inherited changes apply
+                    this.UpdateLayout();
+                });
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warning, $"Failed to apply font: {ex.Message}", false);
+            }
+        }
+
         #endregion
 
         #region Keybind Handling
@@ -765,7 +1719,9 @@ namespace Aimmy2
             {
                 ["Model Switch Keybind"] = HandleModelSwitch,
                 ["Dynamic FOV Keybind"] = () => ApplyDynamicFOV(true),
-                ["Emergency Stop Keybind"] = HandleEmergencyStop
+                ["Emergency Stop Keybind"] = HandleEmergencyStop,
+                ["Anti Recoil Keybind"] = () => HandleAntiRecoil(true),
+                ["Disable Anti Recoil Keybind"] = DisableAntiRecoil
             };
 
             handlers.GetValueOrDefault(bindingId)?.Invoke();
@@ -775,7 +1731,8 @@ namespace Aimmy2
         {
             var handlers = new Dictionary<string, Action>
             {
-                ["Dynamic FOV Keybind"] = () => ApplyDynamicFOV(false)
+                ["Dynamic FOV Keybind"] = () => ApplyDynamicFOV(false),
+                ["Anti Recoil Keybind"] = () => HandleAntiRecoil(false)
             };
 
             handlers.GetValueOrDefault(bindingId)?.Invoke();
@@ -905,7 +1862,8 @@ namespace Aimmy2
                 (uiManager.D_DetectionAreaType, "Detection Area Type", new Dictionary<string, int>
                 {
                     ["Closest to Center Screen"] = 0,
-                    ["Closest to Mouse"] = 1
+                    ["Closest to Mouse"] = 1,
+                    ["Highest Confidence"] = 2
                 }),
                 (uiManager.D_AimingBoundariesAlignment, "Aiming Boundaries Alignment", new Dictionary<string, int>
                 {
@@ -924,7 +1882,7 @@ namespace Aimmy2
                     ["XInput (Controller Input)"] = 5,
                     ["XInput (Normal)"] = 6,
                     ["DirectInput (PS4/PS5 Controller)"] = 7,
-                    ["ViGEm Virtual Controller (Xbox 360 Output)"] = 8
+                    ["Virtual Controller (ViGEm)"] = 8
                 }),
                 (uiManager.D_ScreenCaptureMethod, "Screen Capture Method", new Dictionary<string, int>
                 {
@@ -975,6 +1933,23 @@ namespace Aimmy2
             SaveDictionary.LoadJSON(Dictionary.sliderSettings, path);
             SaveDictionary.LoadJSON(Dictionary.dropdownState, path);
 
+            try
+            {
+                if (File.Exists(path))
+                {
+                    string text = File.ReadAllText(path);
+                    if (!text.Contains("AR Hold Time") && Dictionary.toggleState.ContainsKey("Anti-Recoil") && Dictionary.toggleState["Anti-Recoil"])
+                    {
+                        Dictionary.toggleState["Anti-Recoil"] = false;
+                        if (uiManager.T_AntiRecoil != null)
+                        {
+                            Dispatcher.Invoke(() => UpdateToggleUI(uiManager.T_AntiRecoil, false));
+                        }
+                    }
+                }
+            }
+            catch { }
+
             if (!loading_from_configlist || _menuControls["AimMenu"] == null || !_menuInitialized["AimMenu"])
                 return;
 
@@ -1021,7 +1996,11 @@ namespace Aimmy2
                 ("AI Minimum Confidence", uiManager.S_AIMinimumConfidence, 50.0),
                 ("Kalman Lead Time", uiManager.S_KalmanLeadTime, 0.10),
                 ("WiseTheFox Lead Time", uiManager.S_WiseTheFoxLeadTime, 0.15),
-                ("Shalloe Lead Multiplier", uiManager.S_ShalloeLeadMultiplier, 3.0)
+                ("Shalloe Lead Multiplier", uiManager.S_ShalloeLeadMultiplier, 3.0),
+                ("AR Hold Time", uiManager.S_ARHoldTime, 0.0),
+                ("AR Fire Rate", uiManager.S_ARFireRate, 100.0),
+                ("AR Y Recoil", uiManager.S_YAntiRecoilAdjustment, 0.0),
+                ("AR X Recoil", uiManager.S_XAntiRecoilAdjustment, 0.0)
             };
 
             ApplySliderValues(sliderConfigs, Dictionary.sliderSettings);
@@ -1043,7 +2022,8 @@ namespace Aimmy2
                 ("Detection Area Type", uiManager.D_DetectionAreaType, new Dictionary<string, int>
                 {
                     ["Closest to Center Screen"] = 0,
-                    ["Closest to Mouse"] = 1
+                    ["Closest to Mouse"] = 1,
+                    ["Highest Confidence"] = 2
                 }),
 
                 ("Aiming Boundaries Alignment", uiManager.D_AimingBoundariesAlignment, new Dictionary<string, int>
@@ -1060,10 +2040,7 @@ namespace Aimmy2
                     ["LG HUB"] = 2,
                     ["Razer Synapse (Require Razer Peripheral)"] = 3,
                     ["ddxoft Virtual Input Driver"] = 4,
-                    ["XInput (Controller Input)"] = 5,
-                    ["XInput (Normal)"] = 6,
-                    ["DirectInput (PS4/PS5 Controller)"] = 7,
-                    ["ViGEm Virtual Controller (Xbox 360 Output)"] = 8
+                    ["Virtual Controller (ViGEm)"] = 5
                 }),
 
                 ("Movement Path", uiManager.D_MovementPath, new Dictionary<string, int>
@@ -1242,6 +2219,19 @@ namespace Aimmy2
 
         public AFileLocator AddFileLocator(StackPanel panel, string title, string filter = "All files (*.*)|*.*", string DLExtension = "") =>
             throw new NotImplementedException("Use control's internal implementation");
+
+        public void ShowDirectInputWarning()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                GTAWarningOverlay.Visibility = Visibility.Visible;
+            });
+        }
+
+        private void DismissGTAWarning_Click(object sender, RoutedEventArgs e)
+        {
+            GTAWarningOverlay.Visibility = Visibility.Collapsed;
+        }
 
         #endregion
     }

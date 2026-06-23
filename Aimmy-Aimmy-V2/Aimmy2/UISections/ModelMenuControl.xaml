@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Aimmy2.Controls.ModelMenuControl"
+<UserControl x:Class="Aimmy2.Controls.ModelMenuControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -58,20 +58,20 @@
                                 Margin="0,1,12,0">
                         <TextBlock Text="&#xE8B7;"
                                    FontFamily="Segoe MDL2 Assets"
-                                   Foreground="#DDFFFFFF"
+                                   Foreground="#F2FFFFFF"
                                    FontSize="13"
                                    Margin="0,0,8,0"
                                    VerticalAlignment="Center" />
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Local library"
-                                       Foreground="White"
-                                       FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                       Foreground="#F2FFFFFF"
+                                       FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                        FontWeight="SemiBold"
                                        FontSize="13"
                                        TextTrimming="CharacterEllipsis" />
                             <TextBlock Text="Drag in models or configs, then refresh the list"
                                        Foreground="#99FFFFFF"
-                                       FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                       FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                        FontSize="10"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
@@ -112,8 +112,8 @@
                     <TabItem.Header>
                         <TextBlock Text="Local Models"
                                    FontSize="11"
-                                   Foreground="White"
-                                   FontFamily="{StaticResource Atkinson Hyperlegible}" />
+                                   Foreground="#F2FFFFFF"
+                                   FontFamily="{DynamicResource Atkinson Hyperlegible}" />
                     </TabItem.Header>
                     <Grid>
                         <ScrollViewer x:Name="LocalModelStoreMenu"
@@ -129,9 +129,9 @@
                                 Height="39">
                                     <TextBox
                                 x:Name="LocalModelSearchBox"
-                                FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                 Padding="5"
-                                Foreground="White"
+                                Foreground="#F2FFFFFF"
                                 CaretBrush="White"
                                 TextChanged="LocalModelSearchBox_TextChanged">
                                     </TextBox>
@@ -147,8 +147,8 @@
                                      AllowDrop="True"
                                      Drop="ModelListBox_Drop"
                                      DragOver="ModelListBox_DragOver"
-                                     Foreground="#DDFFFFFF"
-                                     FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                     Foreground="#F2FFFFFF"
+                                     FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                      Margin="0"
                                      Padding="2">
                             </ListBox>
@@ -161,9 +161,9 @@
                                 VerticalAlignment="Bottom"
                                 Height="39">
                             <Label x:Name="SelectedModelNotifier"
-                                   Foreground="#DDFFFFFF"
+                                   Foreground="#F2FFFFFF"
                                    Content="Loaded Model: N/A"
-                                   FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                   FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                    Padding="10"></Label>
                         </Border>
                         <Button x:Name="OpenFolderB_ModelWindow"
@@ -180,7 +180,7 @@
                                 BorderThickness="1"
                                 materialDesign:ButtonAssist.CornerRadius="0,0,5,0"
                                 FontSize="13"
-                                Foreground="White"
+                                Foreground="#F2FFFFFF"
                                 Click="OpenFolderB_Click"
                                 Tag="models" />
                     </Grid>
@@ -191,8 +191,8 @@
                     <TabItem.Header>
                         <TextBlock Text="Local Configs"
                                    FontSize="11"
-                                   Foreground="White"
-                                   FontFamily="{StaticResource Atkinson Hyperlegible}" />
+                                   Foreground="#F2FFFFFF"
+                                   FontFamily="{DynamicResource Atkinson Hyperlegible}" />
                     </TabItem.Header>
                     <Grid>
                         <ScrollViewer x:Name="LocalConfigStoreMenu"
@@ -208,9 +208,9 @@
                                     Height="39">
                                     <TextBox
                                         x:Name="LocalConfigSearchBox"
-                                        FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                        FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                         Padding="5"
-                                        Foreground="White"
+                                        Foreground="#F2FFFFFF"
                                         CaretBrush="White"
                                         TextChanged="LocalConfigSearchBox_TextChanged">
                                     </TextBox>
@@ -226,8 +226,8 @@
                                      AllowDrop="True"
                                      Drop="ConfigsListBox_Drop"
                                      DragOver="ConfigsListBox_DragOver"
-                                     Foreground="#DDFFFFFF"
-                                     FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                     Foreground="#F2FFFFFF"
+                                     FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                      Margin="0"
                                      Padding="2" />
                         </Border>
@@ -239,9 +239,9 @@
                                 VerticalAlignment="Bottom"
                                 Height="39">
                             <Label x:Name="SelectedConfigNotifier"
-                                   Foreground="#DDFFFFFF"
+                                   Foreground="#F2FFFFFF"
                                    Content="Loaded Config: N/A"
-                                   FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                   FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                    Padding="10"></Label>
                         </Border>
                         <Button x:Name="OpenFolderB_ConfigWindow"
@@ -258,7 +258,7 @@
                                 BorderThickness="1"
                                 materialDesign:ButtonAssist.CornerRadius="0,0,5,0"
                                 FontSize="13"
-                                Foreground="White"
+                                Foreground="#F2FFFFFF"
                                 Click="OpenFolderB_Click"
                                 Tag="configs" />
                     </Grid>
@@ -269,8 +269,8 @@
                     <TabItem.Header>
                         <TextBlock Text="Downloadable Models"
                                    FontSize="11"
-                                   Foreground="White"
-                                   FontFamily="{StaticResource Atkinson Hyperlegible}" />
+                                   Foreground="#F2FFFFFF"
+                                   FontFamily="{DynamicResource Atkinson Hyperlegible}" />
                     </TabItem.Header>
                     <Grid>
                         <Label x:Name="LackOfModelsText"
@@ -278,7 +278,7 @@
                                HorizontalContentAlignment="Center"
                                VerticalContentAlignment="Center"
                                Content="There is no downloadable models at the moment, please check again later."
-                               Foreground="#DDFFFFFF" />
+                               Foreground="#F2FFFFFF" />
                         <ScrollViewer x:Name="ModelStoreMenu"
                                       VerticalScrollBarVisibility="Visible"
                                       PanningMode="VerticalOnly"
@@ -292,9 +292,9 @@
                                         Height="39">
                                     <TextBox
                                         x:Name="SearchBox"
-                                        FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                        FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                         Padding="5"
-                                        Foreground="White"
+                                        Foreground="#F2FFFFFF"
                                         CaretBrush="White"
                                         TextChanged="SearchBox_TextChanged">
                                     </TextBox>
@@ -310,8 +310,8 @@
                     <TabItem.Header>
                         <TextBlock Text="Downloadable Configs"
                                    FontSize="11"
-                                   Foreground="White"
-                                   FontFamily="{StaticResource Atkinson Hyperlegible}" />
+                                   Foreground="#F2FFFFFF"
+                                   FontFamily="{DynamicResource Atkinson Hyperlegible}" />
                     </TabItem.Header>
                     <Grid>
                         <Label x:Name="LackOfConfigsText"
@@ -319,7 +319,7 @@
                                HorizontalContentAlignment="Center"
                                VerticalContentAlignment="Center"
                                Content="There is no downloadable configs at the moment, please check again later."
-                               Foreground="#DDFFFFFF" />
+                               Foreground="#F2FFFFFF" />
                         <ScrollViewer x:Name="ConfigStoreMenu"
                                       VerticalScrollBarVisibility="Visible"
                                       PanningMode="VerticalOnly"
@@ -333,9 +333,9 @@
                                         Height="39">
                                     <TextBox
                                         x:Name="CSearchBox"
-                                        FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                        FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                         Padding="5"
-                                        Foreground="White"
+                                        Foreground="#F2FFFFFF"
                                         CaretBrush="White"
                                         TextChanged="CSearchBox_TextChanged">
                                     </TextBox>

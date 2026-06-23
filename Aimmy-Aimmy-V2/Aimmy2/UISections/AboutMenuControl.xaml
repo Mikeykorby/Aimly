@@ -30,7 +30,7 @@
                                VerticalAlignment="Center"
                                Padding="0,0,4,0"/>
                         <Label Content="Aimmy is free and open source"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                Foreground="#80FFFFFF"
                                FontSize="11"
                                VerticalAlignment="Center"
@@ -53,13 +53,13 @@
 
                     <!-- Title & Version -->
                     <TextBlock Text="Aimly"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="24"
                                FontWeight="Bold"
-                               Foreground="White"
+                               Foreground="#F2FFFFFF"
                                HorizontalAlignment="Center"/>
                     <TextBlock Text="Universal Second Eye"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="12"
                                Foreground="#99FFFFFF"
                                HorizontalAlignment="Center"
@@ -73,16 +73,16 @@
                             MouseLeftButtonUp="VersionBorder_Click">
                         <Label x:Name="AboutDesc"
                                Content="v2.5.0"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="11"
-                               Foreground="White"
+                               Foreground="#F2FFFFFF"
                                Padding="0"/>
                     </Border>
 
                     <!-- System Specs -->
                     <Label x:Name="AboutSpecs"
                            Content="Intel I5-13400F | NVIDIA GTX 1050"
-                           FontFamily="{StaticResource Atkinson Hyperlegible}"
+                           FontFamily="{DynamicResource Atkinson Hyperlegible}"
                            Foreground="#60FFFFFF"
                            FontSize="10"
                            HorizontalAlignment="Center"
@@ -102,9 +102,9 @@
                                     FontSize="11"
                                     Height="32"
                                     materialDesign:ButtonAssist.CornerRadius="6"
-                                    Foreground="White"
+                                    Foreground="#F2FFFFFF"
                                     Width="140"
-                                    FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                    FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                     EffectBrush="{DynamicResource ThemeColor}"
                                     Click="CheckForUpdates_Click" />
                         <Ant:Button x:Name="CopyDiagnostics"
@@ -116,10 +116,10 @@
                                     FontSize="11"
                                     Height="32"
                                     materialDesign:ButtonAssist.CornerRadius="6"
-                                    Foreground="White"
+                                    Foreground="#F2FFFFFF"
                                     Width="140"
                                     Margin="8,0,0,0"
-                                    FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                    FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                     EffectBrush="{DynamicResource ThemeColor}"
                                     Click="CopyDiagnostics_Click" />
                     </StackPanel>
@@ -135,7 +135,7 @@
                     Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="CORE TEAM"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="10"
                                FontWeight="Bold"
                                Foreground="#60FFFFFF"
@@ -158,7 +158,7 @@
                     Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="KEY CONTRIBUTORS"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="10"
                                FontWeight="Bold"
                                Foreground="#60FFFFFF"
@@ -185,13 +185,13 @@
                     Margin="0,0,0,12">
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Text="And the entire Aimmy community"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="11"
                                Foreground="#70FFFFFF"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,4"/>
                     <TextBlock Text="Thank you for your support!"
-                               FontFamily="{StaticResource Atkinson Hyperlegible}"
+                               FontFamily="{DynamicResource Atkinson Hyperlegible}"
                                FontSize="10"
                                Foreground="#50FFFFFF"
                                HorizontalAlignment="Center"/>
@@ -210,7 +210,7 @@
                         Foreground="#AAFFFFFF"
                         HorizontalAlignment="Stretch"
                         Margin="0,0,0,8"
-                        FontFamily="{StaticResource Atkinson Hyperlegible}"
+                        FontFamily="{DynamicResource Atkinson Hyperlegible}"
                         EffectBrush="{DynamicResource ThemeColor}"
                         Click="GitHubButton_Click">
                 <StackPanel Orientation="Horizontal">
@@ -233,9 +233,9 @@
                         FontSize="11"
                         Height="36"
                         materialDesign:ButtonAssist.CornerRadius="8"
-                        Foreground="White"
+                        Foreground="#F2FFFFFF"
                         HorizontalAlignment="Stretch"
-                        FontFamily="{StaticResource Atkinson Hyperlegible}"
+                        FontFamily="{DynamicResource Atkinson Hyperlegible}"
                         EffectBrush="#7289DA"
                         Click="DiscordButton_Click">
                 <StackPanel Orientation="Horizontal">

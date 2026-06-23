@@ -1,6 +1,9 @@
-﻿using Aimmy2.Theme;
+using Aimmy2.Theme;
 using Class;
+using System;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace Aimmy2
 {
@@ -8,6 +11,26 @@ namespace Aimmy2
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Global Exception Handlers
+            AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+            {
+                if (args.ExceptionObject is Exception ex)
+                {
+                    global::Other.LogManager.Log(global::Other.LogManager.LogLevel.Error, $"Fatal Unhandled Exception: {ex.Message}\n{ex.StackTrace}", false);
+                }
+            };
+
+            DispatcherUnhandledException += (s, args) =>
+            {
+                global::Other.LogManager.Log(global::Other.LogManager.LogLevel.Error, $"UI Dispatcher Exception: {args.Exception.Message}\n{args.Exception.StackTrace}", false);
+            };
+
+            TaskScheduler.UnobservedTaskException += (s, args) =>
+            {
+                global::Other.LogManager.Log(global::Other.LogManager.LogLevel.Error, $"Unobserved Task Exception: {args.Exception.Message}\n{args.Exception.StackTrace}", false);
+                args.SetObserved();
+            };
+
             // Initialize the application theme from saved settings
             InitializeTheme();
 
@@ -51,7 +74,7 @@ namespace Aimmy2
                 // Load the color state configuration
                 var colorState = new Dictionary<string, dynamic>
                 {
-                    { "Theme Color", "#FF722ED1" }
+                    { "Theme Color", "#FFFFFFFF" }
                 };
 
                 // Load saved colors
@@ -65,13 +88,30 @@ namespace Aimmy2
                 else
                 {
                     // Use default purple if no saved color
-                    ThemeManager.SetThemeColor("#FF722ED1");
+                    ThemeManager.SetThemeColor("#FFFFFFFF");
+                }
+
+                // Load toggles state configuration early to detect Beta UI
+                var toggleState = new Dictionary<string, dynamic>
+                {
+                    { "Beta UI", false }
+                };
+                SaveDictionary.LoadJSON(toggleState, "bin\\toggles.cfg");
+
+                if (toggleState.TryGetValue("Beta UI", out var betaUiVal) && betaUiVal is bool betaEnabled)
+                {
+                    Aimmy2.Class.Dictionary.toggleState["Beta UI"] = betaEnabled;
+                    if (betaEnabled)
+                    {
+                        // Regenerate scheme
+                        ThemeManager.RegenerateMaterial3Scheme();
+                    }
                 }
             }
             catch (Exception ex)
             {
                 // Log error and use default color
-                ThemeManager.SetThemeColor("#FF722ED1");
+                ThemeManager.SetThemeColor("#FFFFFFFF");
             }
         }
     }

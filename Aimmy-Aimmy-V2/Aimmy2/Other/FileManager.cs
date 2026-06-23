@@ -1,4 +1,4 @@
-﻿using Aimmy2;
+using Aimmy2;
 using Aimmy2.AILogic;
 using Aimmy2.Class;
 using Aimmy2.Other;
@@ -93,7 +93,7 @@ namespace Other
             Dictionary.lastLoadedModel = selectedModel;
 
             // Store original values and disable them temporarily
-            var toggleKeys = new[] { "Aim Assist", "Constant AI Tracking", "Auto Trigger", "Show Detected Player", "Show AI Confidence", "Show Tracers" };
+            var toggleKeys = new[] { "Aim Assist", "Constant AI Tracking", "Auto Trigger", "Show Detected Player", "Show AI Confidence", "Confidence Bar", "Show Tracers", "Show Aim Point" };
             var originalToggleStates = toggleKeys.ToDictionary(key => key, key => Dictionary.toggleState[key]);
             foreach (var key in toggleKeys)
             {
@@ -138,6 +138,13 @@ namespace Other
             SaveDictionary.LoadJSON(Dictionary.sliderSettings, configPath);
             SaveDictionary.LoadJSON(Dictionary.dropdownState, configPath);
             SaveDictionary.LoadJSON(Dictionary.toggleState, configPath);
+            
+            // Ensure Hide Real Controller is never loaded as true from configs
+            if (Dictionary.toggleState.ContainsKey("Hide Real Controller"))
+            {
+                Dictionary.toggleState["Hide Real Controller"] = false;
+            }
+            
             PropertyChanger.PostNewConfig(configPath, true);
 
             SelectedConfigNotifier.Content = "Loaded Config: " + selectedConfig;

@@ -1,4 +1,4 @@
-﻿using Aimmy2.Class;
+using Aimmy2.Class;
 using Aimmy2.Theme;
 using Class;
 using System.Runtime.InteropServices;
@@ -114,6 +114,18 @@ namespace Visuality
             var brush = new SolidColorBrush(newColor);
             Circle.Stroke = brush;
             RectangleShape.Stroke = brush;
+
+            // Add a nice neon glow effect
+            var shadow = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = newColor,
+                BlurRadius = 15,
+                ShadowDepth = 0,
+                Opacity = 0.8
+            };
+
+            Circle.Effect = shadow;
+            RectangleShape.Effect = shadow;
         }
 
 

@@ -121,6 +121,87 @@ public static bool IsAntiAimJitterEnabled = false;
             LastClickTime = DateTime.UtcNow;
         }
 
+        public static int LastAntiRecoilClickTime = 0;
+
+        public static void DoAntiRecoil()
+        {
+            int timeSinceLastClick = Math.Abs(DateTime.UtcNow.Millisecond - LastAntiRecoilClickTime);
+
+            if (timeSinceLastClick < Convert.ToInt32(Dictionary.sliderSettings["AR Fire Rate"]))
+            {
+                return;
+            }
+
+            int xRecoil = Convert.ToInt32(Dictionary.sliderSettings["AR X Recoil"]);
+            int yRecoil = Convert.ToInt32(Dictionary.sliderSettings["AR Y Recoil"]);
+
+            switch (Dictionary.dropdownState["Mouse Movement Method"])
+            {
+                case "SendInput":
+                    SendInputMouse.SendMouseCommand(MOUSEEVENTF_MOVE, xRecoil, yRecoil);
+                    break;
+
+                case "LG HUB":
+                    LGMouse.Move(0, xRecoil, yRecoil, 0);
+                    break;
+
+                case "Razer Synapse (Require Razer Peripheral)":
+                    RZMouse.mouse_move(xRecoil, yRecoil, true);
+                    break;
+
+                case "ddxoft Virtual Input Driver":
+                    DdxoftMain.ddxoftInstance.movR!(xRecoil, yRecoil);
+                    break;
+
+                case "XInput (Controller Input)":
+                    // AI aim + user controller right stick both contribute to movement
+                    // This is like mouse: AI aims but you can guide it with the stick
+                    var xinputCtrl = XInputMain.Instance;
+                    if (xinputCtrl.IsConnected)
+                    {
+                        var state = xinputCtrl.GetState();
+                        if (state == 0)
+                        {
+                            // Get raw stick values (-32767 to 32767) and scale to match AI aim range (-150 to 150)
+                            short stickX = xinputCtrl.CurrentRightStickX;
+                            short stickY = xinputCtrl.CurrentRightStickY;
+                            
+                            // Apply XInput deadzone
+                            const short deadzone = RIGHT_THUMB_DEADZONE;
+                            if (Math.Abs(stickX) < deadzone) stickX = 0;
+                            if (Math.Abs(stickY) < deadzone) stickY = 0;
+                            
+                            // Scale stick to AI aim range: stick value * (150 / 32767)
+                            int stickAimX = (int)Math.Round(stickX * (150.0 / 32767.0));
+                            int stickAimY = (int)Math.Round(stickY * (150.0 / 32767.0));
+                            
+                            // IMPORTANT: Apply deadzone AFTER scaling, and clamp stick input separately
+                            // This means small stick movements don't affect the aim, but big movements add to it
+                            if (stickAimX != 0 || stickAimY != 0)
+                            {
+                                // Combine AI aim + user stick input
+                                // Both inputs work together like two hands guiding a mouse
+                                xRecoil += stickAimX;
+                                yRecoil += stickAimY;
+                                
+                                // Clamp the combined output to stay within mouse_event limits
+                                xRecoil = Math.Clamp(xRecoil, -150, 150);
+                                yRecoil = Math.Clamp(yRecoil, -150, 150);
+                            }
+                        }
+                    }
+                    // Send combined AI + stick input as mouse movement
+                    mouse_event(MOUSEEVENTF_MOVE, (uint)xRecoil, (uint)yRecoil, 0, 0);
+                    break;
+
+                default:
+                    mouse_event(MOUSEEVENTF_MOVE, (uint)xRecoil, (uint)yRecoil, 0, 0);
+                    break;
+            }
+
+            LastAntiRecoilClickTime = DateTime.UtcNow.Millisecond;
+        }
+
         #region Spray Mode Methods
         public static void HoldMouseButton()
         {
@@ -322,7 +403,7 @@ public static bool IsAntiAimJitterEnabled = false;
                     if (VirtualControllerOutput.IsConnected)
                     {
                         // Scale AI aim output (-150..150) to virtual controller range (-32767..32767)
-                        VirtualControllerOutput.SetRightStick(newPosition.X, newPosition.Y);
+                        VirtualControllerOutput.SetAimStick(newPosition.X, newPosition.Y);
                     }
                     // ALSO send mouse event so cursor still moves on screen
                     mouse_event(MOUSEEVENTF_MOVE, (uint)newPosition.X, (uint)newPosition.Y, 0, 0);

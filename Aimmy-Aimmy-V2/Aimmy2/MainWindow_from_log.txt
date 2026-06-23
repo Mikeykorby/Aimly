@@ -1,0 +1,381 @@
+Created At: 2026-06-22T00:37:08Z
+Completed At: 2026-06-22T00:37:08Z
+File Path: `file:///c:/Users/Michael/Downloads/Projects/Aimmy-Aimmy-V2/Aimmy-Aimmy-V2/Aimmy2/MainWindow.xaml`
+Total Lines: 373
+Total Bytes: 20383
+Showing lines 1 to 373
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: <Window x:Class="Aimmy2.MainWindow"
+2:         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+3:         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+4:         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+5:         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+6:         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+7:         xmlns:Ant="clr-namespace:AntWpf.Controls;assembly=AntWpf"
+8:         xmlns:controls="clr-namespace:Aimmy2.Controls"
+9:         xmlns:theme="clr-namespace:Aimmy2.Theme"
+10:         theme:ThemeBehavior.AutoRegister="True"
+11:         mc:Ignorable="d"
+12:         Title="Aimly"
+13:         Height="444"
+14:         MinHeight="444"
+15:         Width="670"
+16:         MinWidth="670"
+17:         WindowStyle="None"
+18:         ResizeMode="CanResize"
+19:         WindowStartupLocation="CenterScreen"
+20:         AllowsTransparency="True"
+21:         Background="Transparent"
+22:         MouseLeftButtonDown="Window_MouseLeftButtonDown"
+23:         Closing="Window_Closing"
+24:         Loaded="Window_Loaded">
+25:     <Window.Resources>
+26:         <!-- Theme colors that can be updated dynamically -->
+27:         <SolidColorBrush x:Key="ThemeColor" Color="#FF722ED1"/>
+28:         <SolidColorBrush x:Key="ThemeColorDark" Color="#FF531DAB"/>
+29:         <SolidColorBrush x:Key="ThemeColorLight" Color="#FF8B3FE5"/>
+30:         <SolidColorBrush x:Key="ThemeGradientDark" Color="#FF120338"/>
+31: 
+32:         <!-- Additional theme variations -->
+33:         <SolidColorBrush x:Key="ThemeColorTransparent" Color="#33722ED1"/>
+34:         <SolidColorBrush x:Key="ThemeColorSemiTransparent" Color="#66722ED1"/>
+35:     </Window.Resources>
+36:     <WindowChrome.WindowChrome>
+37:         <WindowChrome ResizeBorderThickness="2"
+38:                       CaptionHeight="0" />
+39:     </WindowChrome.WindowChrome>
+40:     <Grid>
+41:         <!-- Animated glow border layer -->
+42:         <Border x:Name="GlowBorder"
+43:                 CornerRadius="6"
+44:                 BorderThickness="2"
+45:                 Opacity="0.6"
+46:                 IsHitTestVisible="False">
+47:             <Border.BorderBrush>
+48:                 <LinearGradientBrush x:Name="GlowGradient" StartPoint="0,0" EndPoint="1,1">
+49:                     <GradientStop x:Name="GlowStop1" Color="#FF722ED1" Offset="0"/>
+50:                     <GradientStop x:Name="GlowStop2" Color="#FF531DAB" Offset="0.33"/>
+51:                     <GradientStop x:Name="GlowStop3" Color="#FF8B3FE5" Offset="0.66"/>
+52:                     <GradientStop x:Name="GlowStop4" Color="#FF722ED1" Offset="1"/>
+53:                 </LinearGradientBrush>
+54:             </Border.BorderBrush>
+55:             <Border.Effect>
+56:                 <DropShadowEffect Color="#FF722ED1"
+57:                                   BlurRadius="15"
+58:                                   ShadowDepth="0"
+59:                                   Opacity="0.8"/>
+60:             </Border.Effect>
+61:         </Border>
+62: 
+63:         <Border x:Name="MainBorder"
+64:                 CornerRadius="5,5,5,5"
+65:                 BorderBrush="Black"
+66:                 BorderThickness="1,1,1,1"
+67:                 SnapsToDevicePixels="True"
+68:                 ClipToBounds="True"
+69:                 MouseMove="Main_Background_Gradient">
+70:             <Border.Effect>
+71:                 <DropShadowEffect Color="#FF000000"
+72:                                   BlurRadius="24"
+73:                                   ShadowDepth="0"
+74:                                   Opacity="0.45" />
+75:             </Border.Effect>
+76:             <Border.Background>
+77:                 <LinearGradientBrush EndPoint="0.5,1"
+78:                                      StartPoint="0,0">
+79:                     <LinearGradientBrush.RelativeTransform>
+80:                         <TransformGroup>
+81:                             <ScaleTransform CenterY="0.5"
+82:                                             CenterX="0.5" />
+83:                             <SkewTransform CenterX="0.5"
+84:                                            CenterY="0.5" />
+85:                             <RotateTransform x:Name="RotaryGradient"
+86:                                              Angle="0"
+87:                                              CenterX="0.5"
+88:                                              CenterY="0.5" />
+89:                             <TranslateTransform />
+90:                         </TransformGroup>
+91:                     </LinearGradientBrush.RelativeTransform>
+92:                     <GradientStop Color="Black"
+93:                                   Offset="0.27" />
+94:                     <GradientStop x:Name="GradientThemeStop" 
+95:                                   Color="#FF120338"
+96:                                   Offset="1" />
+97:                 </LinearGradientBrush>
+98:             </Border.Background>
+99:             <Grid>
+100:                 <Grid x:Name="Topbar"
+101:                       VerticalAlignment="Top"
+102:                       Height="56"
+103:                       Background="#12000000">
+104:                     <Grid.ColumnDefinitions>
+105:                         <ColumnDefinition Width="*" />
+106:                         <ColumnDefinition Width="Auto" />
+107:                     </Grid.ColumnDefinitions>
+108:                     <StackPanel Orientation="Horizontal"
+109:                                 VerticalAlignment="Center"
+110:                                 Margin="14,0,0,0">
+111:                         <Border Width="28"
+112:                                 Height="28"
+113:                                 CornerRadius="8"
+114:                                 Background="#2AFFFFFF"
+115:                                 BorderBrush="#24FFFFFF"
+116:                                 BorderThickness="1">
+117:                             <Path x:Name="AimmyLogo"
+118:                                   Fill="White"
+119:                                   StrokeThickness="1.33333"
+120:                                   Stretch="Fill"
+121:                                   HorizontalAlignment="Center"
+122:                                   VerticalAlignment="Center"
+123:                                   Width="16"
+124:                                   Height="8">
+125:                                 <Path.Data>
+126:                                     <PathGeometry Figures="M 18.2472,490.72756 0.18686636,472.66723 153.0173,318.84293 305.84774,165.01862 l 17.74245,17.70593 17.74244,17.70592 17.0189,-16.98112 c 9.36039,-9.33961 17.60957,-16.98112 18.33151,-16.98112 0.72194,0 69.86022,68.54563 153.64061,152.32363 l 152.32798,152.32362 -18.32581,18.45368 -18.3258,18.45368 -152.3021,-153.11064 -152.3021,-153.11063 -20.36457,20.6423 C 309.83073,233.79713 241.18587,302.86906 168.4871,375.93703 L 36.307534,508.7879 Z"
+127:                                                   FillRule="NonZero" />
+128:                                 </Path.Data>
+129:                             </Path>
+130:                         </Border>
+131:                         <StackPanel Margin="10,0,0,0"
+132:                                     VerticalAlignment="Center">
+133:                             <TextBlock Text="Aimly"
+134:                                        Foreground="#F2FFFFFF"
+135:                                        FontSize="14"
+136:                                        FontWeight="SemiBold"
+137:                                        FontFamily="{StaticResource Atkinson Hyperlegible}" />
+138:                             <TextBlock Text="Sharper layout, live status, quick controls"
+139:                                        Foreground="#99FFFFFF"
+140:                                        FontSize="10"
+141:                                        FontFamily="{StaticResource Atkinson Hyperlegible}" />
+142:                         </StackPanel>
+143:                     </StackPanel>
+144:                     <StackPanel Grid.Column="1"
+145:                                 Orientation="Horizontal"
+146:                                 VerticalAlignment="Center"
+147:                                 Margin="0,0,10,0">
+148:                         <Border x:Name="ModelStatusBadge" Width="94"
+149:                                 Height="28"
+150:                                 CornerRadius="8"
+151:                                 Background="#1EFFFFFF"
+152:                                 BorderBrush="#18FFFFFF"
+153:                                 BorderThickness="1"
+154:                                 Margin="0,0,8,0">
+155:                             <Grid>
+156:                                 <!-- Animated status dot - pulses when model is loaded -->
+157:                                 <Ellipse x:Name="ModelStatusDot"
+158:                                          Width="8" Height="8"
+159:                                          Fill="#4CAF50"
+160:                                          HorizontalAlignment="Left"
+161:                                          VerticalAlignment="Center"
+162:                                          Margin="6,0,0,0"
+163:                                          Visibility="Collapsed"
+164:                                          RenderTransformOrigin="0.5,0.5">
+165:                                     <Ellipse.RenderTransform>
+166:                                         <ScaleTransform x:Name="ModelDotScale" ScaleX="1" ScaleY="1"/>
+167:                                     </Ellipse.RenderTransform>
+168:                                 </Ellipse>
+169:                                 <TextBlock x:Name="HeaderModelStatus"
+170:                                            Text="Model: N/A"
+171:                                            Foreground="#F2FFFFFF"
+172:                                            FontSize="10"
+173:                                            FontFamily="{StaticResource Atkinson Hyperlegible}"
+174:                                            VerticalAlignment="Center"
+175:                                            HorizontalAlignment="Center" />
+176:                             </Grid>
+177:                         </Border>
+178:                         <Border x:Name="TriggerStatusBadge" Width="92"
+179:                                 Height="28"
+180:                                 CornerRadius="8"
+181:                                 Background="#1EFFFFFF"
+182:                                 BorderBrush="#18FFFFFF"
+183:                                 BorderThickness="1"
+184:                                 Margin="0,0,8,0">
+185:                             <Grid>
+186:                                 <!-- Animated status dot for trigger - pulses when trigger is active -->
+187:                                 <Ellipse x:Name="TriggerStatusDot"
+188:                                          Width="8" Height="8"
+189:                                          Fill="#FF5722"
+190:                                          HorizontalAlignment="Left"
+191:                                          VerticalAlignment="Center"
+192:                                          Margin="6,0,0,0"
+193:                                          Visibility="Collapsed"
+194:                                          RenderTransformOrigin="0.5,0.5">
+195:                                     <Ellipse.RenderTransform>
+196:                                         <ScaleTransform x:Name="TriggerDotScale" ScaleX="1" ScaleY="1"/>
+197:                                     </Ellipse.RenderTransform>
+198:                                 </Ellipse>
+199:                                 <TextBlock x:Name="HeaderTriggerStatus"
+200:                                            Text="Trigger: Off"
+201:                                            Foreground="#F2FFFFFF"
+202:                                            FontSize="10"
+203:                                            FontFamily="{StaticResource Atkinson Hyperlegible}"
+204:                                            VerticalAlignment="Center"
+205:                                            HorizontalAlignment="Center" />
+206:                             </Grid>
+207:                         </Border>
+208:                         <Border x:Name="DisplayStatusBadge" Width="96"
+209:                                 Height="28"
+210:                                 CornerRadius="8"
+211:                                 Background="#1EFFFFFF"
+212:                                 BorderBrush="#18FFFFFF"
+213:                                 BorderThickness="1"
+214:                                 Margin="0,0,10,0">
+215:                             <TextBlock x:Name="HeaderDisplayStatus"
+216:                                        Text="Display: 1"
+217:                                        Foreground="#F2FFFFFF"
+218:                                        FontSize="10"
+219:                                        FontFamily="{StaticResource Atkinson Hyperlegible}"
+220:                                        VerticalAlignment="Center"
+221:                                        HorizontalAlignment="Center" />
+222:                         </Border>
+223:                         <Button x:Name="Minimize"
+224:                                 Content="&#xE921;"
+225:                                 Background="{x:Null}"
+226:                                 BorderBrush="{x:Null}"
+227:                                 Foreground="White"
+228:                                 FontFamily="Segoe MDL2 Assets"
+229:                                 Padding="15,0,15,0"
+230:                                 materialDesign:ButtonAssist.CornerRadius="5,0,0,5"
+231:                                 BorderThickness="0,0,0,0"
+232:                                 FontSize="10"
+233:                                 VerticalAlignment="Center"
+234:                                 Click="Minimize_Click" />
+235:                         <Button x:Name="Exit"
+236:                                 Content="&#xE8BB;"
+237:                                 Background="{x:Null}"
+238:                                 BorderBrush="{x:Null}"
+239:                                 Foreground="White"
+240:                                 FontFamily="Segoe MDL2 Assets"
+241:                                 Padding="15,0,15,0"
+242:                                 materialDesign:ButtonAssist.CornerRadius="0,5,5,0"
+243:                                 BorderThickness="0,0,0,0"
+244:                                 FontSize="10"
+245:                                 VerticalAlignment="Center"
+246:                                 Click="Exit_Click" />
+247:                     </StackPanel>
+248:                 </Grid>
+249:                 <Grid x:Name="Sidebar"
+250:                       HorizontalAlignment="Left"
+251:                       Width="50"
+252:                       Margin="0,56,0,0">
+253:                     <!-- Improved Menu Highlighter with smoother gradient -->
+254:                 <Border x:Name="MenuHighlighter"
+255:                         Width="50"
+256:                         Height="50"
+257:                         VerticalAlignment="Top"
+258:                         HorizontalAlignment="Center"
+259:                         CornerRadius="0"
+260:                         ClipToBounds="True">
+261:                         <Border.Background>
+262:                             <RadialGradientBrush>
+263:                                 <GradientStop x:Name="HighlighterGradient1" Color="#FF722ED1" Offset="0"/>
+264:                                 <GradientStop x:Name="HighlighterGradient2" Color="#33722ED1" Offset="0.3"/>
+265:                                 <GradientStop Color="Transparent" Offset="0.9"/>
+266:                             </RadialGradientBrush>
+267:                         </Border.Background>
+268:                         <Border.Effect>
+269:                             <BlurEffect Radius="5"/>
+270:                         </Border.Effect>
+271:                     </Border>
+272: 
+273:                     <Ant:Button x:Name="Menu1B"
+274:                                 Tag="AimMenu"
+275:                                 theme:ThemeBehavior.Theme="Theme:EffectBrush"
+276:                                 VerticalAlignment="Top"
+277:                                 Height="50"
+278:                                 BorderThickness="0"
+279:                                 EffectBrush="{DynamicResource ThemeColor}"
+280:                                 Foreground="#ffffff"
+281:                                 BorderBrush="#00D9D9D9"
+282:                                 Background="Transparent"
+283:                                 FontFamily="Segoe MDL2 Assets"
+284:                                 Content="&#xE1D2;"
+285:                                 Padding="0,0,0,0"
+286:                                 FontSize="20"
+287:                                 HorizontalAlignment="Center"
+288:                                 Width="50"
+289:                                 Click="MenuSwitch" />
+290:                     <Ant:Button x:Name="Menu2B"
+291:                                 Tag="ControllerMenu"
+292:                                 theme:ThemeBehavior.Theme="Theme:EffectBrush"
+293:                                 VerticalAlignment="Top"
+294:                                 Height="50"
+295:                                 BorderThickness="0"
+296:                                 EffectBrush="{DynamicResource ThemeColor}"
+297:                                 Foreground="#ffffff"
+298:                                 BorderBrush="#00D9D9D9"
+299:                                 Background="Transparent"
+300:                                 FontFamily="Segoe MDL2 Assets"
+301:                                 Content="&#xE99A;"
+302:                                 Padding="0,0,0,0"
+303:                                 FontSize="20"
+304:                                 HorizontalAlignment="Center"
+305:                                 Width="50"
+306:                                 Margin="0,50,0,0"
+307:                                 Click="MenuSwitch" />
+308:                     <Ant:Button x:Name="Menu3B"
+309:                                 Tag="ModelMenu"
+310:                                 theme:ThemeBehavior.Theme="Theme:EffectBrush"
+311:                                 VerticalAlignment="Top"
+312:                                 Height="50"
+313:                                 BorderThickness="0"
+314:                                 EffectBrush="{DynamicResource ThemeColor}"
+315:                                 Foreground="#ffffff"
+316:                                 BorderBrush="#00D9D9D9"
+317:                                 Background="Transparent"
+318:                                 FontFamily="Segoe MDL2 Assets"
+319:                                 Content="&#xE8E5;"
+320:                                 Padding="0,0,0,0"
+321:                                 FontSize="20"
+322:                                 HorizontalAlignment="Center"
+323:                                 Width="50"
+324:                                 Margin="0,100,0,0"
+325:                                 Click="MenuSwitch" />
+326:                     <Ant:Button x:Name="Menu4B"
+327:                                 Tag="SettingsMenu"
+328:                                 theme:ThemeBehavior.Theme="Theme:EffectBrush"
+329:                                 VerticalAlignment="Top"
+330:                                 Height="50"
+331:                                 BorderThickness="0"
+332:                                 EffectBrush="{DynamicResource ThemeColor}"
+333:                                 Foreground="#ffffff"
+334:                                 BorderBrush="#00D9D9D9"
+335:                                 Background="Transparent"
+336:                                 FontFamily="Segoe MDL2 Assets"
+337:                                 Content="&#xE713;"
+338:                                 Padding="0,0,0,0"
+339:                                 FontSize="20"
+340:                                 HorizontalAlignment="Center"
+341:                                 Width="50"
+342:                                 Margin="0,150,0,0"
+343:                                 Click="MenuSwitch" />
+344:                     <Ant:Button x:Name="Menu5B"
+345:                                 Tag="AboutMenu"
+346:                                 theme:ThemeBehavior.Theme="Theme:EffectBrush"
+347:                                 VerticalAlignment="Top"
+348:                                 Height="50"
+349:                                 BorderThickness="0"
+350:                                 EffectBrush="{DynamicResource ThemeColor}"
+351:                                 Foreground="#ffffff"
+352:                                 BorderBrush="#00D9D9D9"
+353:                                 Background="Transparent"
+354:                                 FontFamily="Segoe MDL2 Assets"
+355:                                 Content="&#xE77B;"
+356:                                 Padding="0,0,0,0"
+357:                                 FontSize="20"
+358:                                 HorizontalAlignment="Center"
+359:                                 Width="50"
+360:                                 Margin="0,200,0,0"
+361:                                 Click="MenuSwitch" />
+362:                 </Grid>
+363: 
+364:                 <!-- Content Area for UserControls -->
+365:                 <Grid x:Name="ContentArea" Margin="50,56,0,0">
+366:                     <!-- UserControls will be loaded here dynamically -->
+367:                 </Grid>
+368: </Grid>
+369: </Border>
+370:     </Grid>
+371: </Window>
+372: 
+373: 
+The above content shows the entire, complete file contents of the requested file.

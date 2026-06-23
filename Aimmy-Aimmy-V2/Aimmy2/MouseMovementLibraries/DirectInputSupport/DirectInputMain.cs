@@ -3,6 +3,8 @@ using Aimmy2.Class;
 using Other;
 using System;
 using System.Linq;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace MouseMovementLibraries.DirectInputSupport
 {
@@ -18,12 +20,22 @@ namespace MouseMovementLibraries.DirectInputSupport
     /// </summary>
     internal class DirectInputMain
     {
+        public bool RequireExclusiveMode 
+        { 
+            get 
+            {
+                return Aimmy2.Class.Dictionary.toggleState.TryGetValue("Hide Real Controller", out var val) && val is bool b && b;
+            }
+        }
+
         private static DirectInputMain? _instance;
         public static DirectInputMain Instance => _instance ??= new DirectInputMain();
 
         private DirectInput? _directInput;
         private Joystick? _joystick;
         private JoystickState? _state;
+
+        public static Guid? TargetGuid { get; set; } = null;
 
         public bool IsConnected { get; private set; }
         public int CurrentRightStickX { get; private set; }
@@ -32,24 +44,48 @@ namespace MouseMovementLibraries.DirectInputSupport
         public int CurrentLeftStickY { get; private set; }
         public int CurrentRightTrigger { get; private set; }
         public int CurrentLeftTrigger { get; private set; }
+        public string ProductName { get; private set; } = string.Empty;
 
         // Deadzone constants (same as XInput)
         private const int LEFT_THUMB_DEADZONE = 7849;
         private const int RIGHT_THUMB_DEADZONE = 8689;
 
         // Calibration: sample initial position to detect axis direction
-        private int _calibrationRightStickXZero = 0;
-        private int _calibrationRightStickYZero = 0;
+        private int _calibrationLeftStickXZero = 32768;
+        private int _calibrationLeftStickYZero = 32768;
+        private int _calibrationRightStickXZero = 32768;
+        private int _calibrationRightStickYZero = 32768;
         private bool _isCalibrated = false;
+
+        private DirectInputMain()
+        {
+            _directInput = new DirectInput();
+        }
+
+        public void Unload()
+        {
+            if (_joystick != null)
+            {
+                try
+                {
+                    _joystick.Unacquire();
+                    _joystick.Dispose();
+                }
+                catch { }
+                _joystick = null;
+            }
+            IsConnected = false;
+        }
 
         /// <summary>
         /// Initialize DirectInput and find a connected controller
+        /// For PS5/PS4 controllers, DS4Windows or DualSenseY must be running to emulate an Xbox/ViGEm controller
         /// </summary>
-        public bool Load()
+        public bool Load(bool showNotification = true)
         {
             try
             {
-                _directInput = new DirectInput();
+                Unload();
 
                 // Find all connected joysticks/gamepads
                 var devices = _directInput.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly);
@@ -62,19 +98,64 @@ namespace MouseMovementLibraries.DirectInputSupport
 
                 if (devices.Count == 0)
                 {
-                    LogManager.Log(LogManager.LogLevel.Warning, "No DirectInput controller detected. Make sure your PS4/PS5 controller is connected via USB or Bluetooth.", true);
-                    return false;
+                if (showNotification)
+                {
+                    LogManager.Log(LogManager.LogLevel.Warning,
+                        "No DirectInput controller detected.\n\n" +
+                        "For PS5/PS4 controllers:\n" +
+                        "1. Install DS4Windows (https://ds4-windows.com) or DualSenseY (https://github.com/WujekFoliarz/DualSenseY)\n" +
+                        "2. Start DS4Windows/DualSenseY and connect your controller\n" +
+                        "3. Make sure DS4Windows/DualSenseY is running in the background\n" +
+                        "4. Select 'DirectInput (PS4/PS5 Controller)' again", true);
+                }
+                return false;
+                }
+
+                // Filter by target guid if specified
+                if (TargetGuid.HasValue)
+                {
+                    devices = devices.Where(d => d.InstanceGuid == TargetGuid.Value).ToList();
+                    if (devices.Count == 0)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Warning, $"DirectInput Target Controller (GUID {TargetGuid.Value}) is not connected.", true);
+                        return false;
+                    }
                 }
 
                 // Create joystick from first device
                 var deviceInstance = devices.First();
                 _joystick = new Joystick(_directInput, deviceInstance.InstanceGuid);
+
+                IntPtr handle = IntPtr.Zero;
+                if (System.Windows.Application.Current != null)
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                        var win = System.Windows.Application.Current.MainWindow;
+                        if (win != null)
+                            handle = new System.Windows.Interop.WindowInteropHelper(win).Handle;
+                    });
+                }
+
+                if (handle != IntPtr.Zero)
+                {
+                    try
+                    {
+                        if (RequireExclusiveMode)
+                            _joystick.SetCooperativeLevel(handle, CooperativeLevel.Exclusive | CooperativeLevel.Background);
+                        else
+                            _joystick.SetCooperativeLevel(handle, CooperativeLevel.NonExclusive | CooperativeLevel.Background);
+                    }
+                    catch { }
+                }
+
                 _joystick.Acquire();
 
                 IsConnected = true;
 
                 // Calibrate: sample initial position for ~100ms to get center values
                 CalibrateController();
+
+                ProductName = deviceInstance.ProductName;
 
                 LogManager.Log(LogManager.LogLevel.Info, $"DirectInput controller connected: {deviceInstance.ProductName}", false);
                 return true;
@@ -87,6 +168,27 @@ namespace MouseMovementLibraries.DirectInputSupport
             }
         }
 
+        public System.Collections.Generic.Dictionary<string, string> GetAvailableControllers()
+        {
+            var list = new System.Collections.Generic.Dictionary<string, string>();
+            try
+            {
+                var directInput = new DirectInput();
+                var devices = directInput.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly);
+                if (devices.Count == 0)
+                {
+                    devices = directInput.GetDevices(DeviceType.Joystick, DeviceEnumerationFlags.AttachedOnly);
+                }
+
+                foreach (var device in devices)
+                {
+                    list.Add($"dinput_{device.InstanceGuid}", $"DirectInput: {device.ProductName}");
+                }
+            }
+            catch { }
+            return list;
+        }
+
         /// <summary>
         /// Calibrate controller by sampling center position
         /// </summary>
@@ -97,7 +199,7 @@ namespace MouseMovementLibraries.DirectInputSupport
             try
             {
                 // Sample a few times and average to get stable center
-                int sumX = 0, sumY = 0, samples = 0;
+                int sumLX = 0, sumLY = 0, sumRX = 0, sumRY = 0, samples = 0;
 
                 for (int i = 0; i < 5; i++)
                 {
@@ -106,21 +208,25 @@ namespace MouseMovementLibraries.DirectInputSupport
                     var state = _joystick.GetCurrentState();
                     if (state != null)
                     {
-                        // PS4/PS5 native: Right stick is typically RotationZ (X) and Z (Y)
-                        sumX += state.RotationZ;
-                        sumY += state.Z;
+                        sumLX += state.X;
+                        sumLY += state.Y;
+                        // PS4/PS5 native: Right stick is typically Z (X) and RotationZ (Y)
+                        sumRX += state.Z;
+                        sumRY += state.RotationZ;
                         samples++;
                     }
                 }
 
                 if (samples > 0)
                 {
-                    _calibrationRightStickXZero = sumX / samples;
-                    _calibrationRightStickYZero = sumY / samples;
+                    _calibrationLeftStickXZero = sumLX / samples;
+                    _calibrationLeftStickYZero = sumLY / samples;
+                    _calibrationRightStickXZero = sumRX / samples;
+                    _calibrationRightStickYZero = sumRY / samples;
                     _isCalibrated = true;
 
                     LogManager.Log(LogManager.LogLevel.Info, 
-                        $"Controller calibrated: center=({_calibrationRightStickXZero}, {_calibrationRightStickYZero})", false);
+                        $"Controller calibrated: L=({_calibrationLeftStickXZero}, {_calibrationLeftStickYZero}) R=({_calibrationRightStickXZero}, {_calibrationRightStickYZero})", false);
                 }
             }
             catch
@@ -145,23 +251,27 @@ namespace MouseMovementLibraries.DirectInputSupport
                 {
                     // Map DirectInput axes to stick positions
                     // Left Stick: X, Y
-                    CurrentLeftStickX = _state.X;
-                    CurrentLeftStickY = _state.Y;
+                    int rawLX = _state.X;
+                    int rawLY = _state.Y;
 
-                    // Right Stick: RotationZ (X axis), Z (Y axis) for PS4/PS5 native
-                    int rawX = _state.RotationZ;
-                    int rawY = _state.Z;
+                    // Right Stick: Z (X axis), RotationZ (Y axis) for PS4/PS5 native
+                    int rawRX = _state.Z;
+                    int rawRY = _state.RotationZ;
 
                     // Apply calibration offset
                     if (_isCalibrated)
                     {
-                        CurrentRightStickX = rawX - _calibrationRightStickXZero;
-                        CurrentRightStickY = rawY - _calibrationRightStickYZero;
+                        CurrentLeftStickX = rawLX - _calibrationLeftStickXZero;
+                        CurrentLeftStickY = rawLY - _calibrationLeftStickYZero;
+                        CurrentRightStickX = rawRX - _calibrationRightStickXZero;
+                        CurrentRightStickY = rawRY - _calibrationRightStickYZero;
                     }
                     else
                     {
-                        CurrentRightStickX = rawX;
-                        CurrentRightStickY = rawY;
+                        CurrentLeftStickX = rawLX - 32768;
+                        CurrentLeftStickY = rawLY - 32768;
+                        CurrentRightStickX = rawRX - 32768;
+                        CurrentRightStickY = rawRY - 32768;
                     }
 
                     // Triggers: RotationX (Left), RotationY (Right)
@@ -227,6 +337,29 @@ namespace MouseMovementLibraries.DirectInputSupport
         }
 
         /// <summary>
+        /// Get left stick position normalized to match AI aim scale (-150 to 150)
+        /// </summary>
+        public (int x, int y) GetLeftStickNormalized()
+        {
+            var (rawX, rawY) = GetLeftStickWithDeadzone();
+
+            int normalizedX = (int)((rawX / 32767.0) * 150);
+            int normalizedY = (int)((rawY / 32767.0) * 150);
+
+            return (normalizedX, normalizedY);
+        }
+
+        public bool[]? GetButtons()
+        {
+            return _state?.Buttons;
+        }
+
+        public int[]? GetPOV()
+        {
+            return _state?.PointOfViewControllers;
+        }
+
+        /// <summary>
         /// Check if right trigger is pressed (threshold > 50%)
         /// </summary>
         public bool IsRightTriggerPressed()
@@ -242,6 +375,135 @@ namespace MouseMovementLibraries.DirectInputSupport
         {
             PollState();
             return CurrentRightTrigger;
+        }
+
+        /// <summary>
+        /// Set force feedback (vibration) on the controller
+        /// Uses DirectInput SendForceFeedbackCommand for simple vibration support
+        /// Note: Most PS4/PS5 controllers don't support force feedback via standard DirectInput
+        /// Use DS4Windows (ds4windows.com) or DualSenseY (github.com/WujekFoliarz/DualSenseY) for full vibration support
+        /// </summary>
+        /// <param name="leftMotor">Left motor intensity (0-65535)</param>
+        /// <param name="rightMotor">Right motor intensity (0-65535)</param>
+        public void Vibrate(int leftMotor = 0, int rightMotor = 0)
+        {
+            if (!IsConnected || _joystick == null) return;
+
+            try
+            {
+                // Check if the device supports force feedback
+                if (!_joystick.Capabilities.Flags.HasFlag(DeviceFlags.ForceFeedback))
+                {
+                    // Force feedback not supported on this device via DirectInput
+                    // This is normal for PS5 controllers - they need DS4Windows/DualSenseY
+                    LogManager.Log(LogManager.LogLevel.Info,
+                        "Standard DirectInput force feedback not supported by this controller.\n" +
+                        "For PS5/PS4 vibration, use DS4Windows or DualSenseY:\n" +
+                        "- DS4Windows: https://ds4-windows.com\n" +
+                        "- DualSenseY: https://github.com/WujekFoliarz/DualSenseY", false);
+                    return;
+                }
+
+                // Stop any existing effects first
+                try
+                {
+                    _joystick.SendForceFeedbackCommand(ForceFeedbackCommand.StopAll);
+                }
+                catch { }
+
+                // Only vibrate if there's motor input
+                if (leftMotor > 0 || rightMotor > 0)
+                {
+                    try
+                    {
+                        int intensity = (leftMotor + rightMotor) / 2;
+
+                        // Create ramp force effect
+                        var rampForce = new RampForce
+                        {
+                            Start = intensity,
+                            End = intensity
+                        };
+
+                        // Set up effect parameters
+                        var effectParams = new EffectParameters
+                        {
+                            Duration = int.MaxValue,
+                            SamplePeriod = int.MaxValue
+                        };
+
+                        // Create and start the effect
+                        var effect = new Effect(_joystick, EffectGuid.RampForce, effectParams);
+
+                        // Set the ramp force data
+                        effect.Download();
+                        effect.Start();  // Start the effect so vibration actually works
+
+                        LogManager.Log(LogManager.LogLevel.Info,
+                            $"Controller vibration: Active (intensity: {intensity})", false);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Warning, $"Could not create vibration effect: {ex.Message}", false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warning, $"Vibration error: {ex.Message}", false);
+            }
+        }
+
+        /// <summary>
+        /// Check if controller supports force feedback
+        /// </summary>
+        public bool SupportsVibration()
+        {
+            if (!IsConnected || _joystick == null) return false;
+            return _joystick.Capabilities.Flags.HasFlag(DeviceFlags.ForceFeedback);
+        }
+
+        private const int DS4WINDOWS_UDP_PORT = 26760;
+        private const int DUALSENSEY_V2_UDP_PORT = 6969;
+
+        private async Task SendDS4UDP_VibrationAsync(int smallMotor, int largeMotor, int port)
+        {
+            try
+            {
+                using var udpClient = new UdpClient();
+                var endpoint = new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, port);
+
+                byte[] packet = new byte[78];
+                packet[0] = 0x01;
+                packet[1] = (byte)smallMotor;
+                packet[2] = (byte)largeMotor;
+
+                await udpClient.SendAsync(packet, packet.Length, endpoint);
+            }
+            catch
+            {
+            }
+        }
+
+        public async Task VibrateUDPAsync(int smallMotor = 0, int largeMotor = 0)
+        {
+            smallMotor = Math.Min(255, Math.Max(0, smallMotor));
+            largeMotor = Math.Min(255, Math.Max(0, largeMotor));
+
+            if (smallMotor <= 0 && largeMotor <= 0)
+            {
+                await SendDS4UDP_VibrationAsync(0, 0, DS4WINDOWS_UDP_PORT);
+                await SendDS4UDP_VibrationAsync(0, 0, DUALSENSEY_V2_UDP_PORT);
+                return;
+            }
+
+            await SendDS4UDP_VibrationAsync(smallMotor, largeMotor, DS4WINDOWS_UDP_PORT);
+            await SendDS4UDP_VibrationAsync(smallMotor, largeMotor, DUALSENSEY_V2_UDP_PORT);
+
+            await Task.Delay(200);
+
+            await SendDS4UDP_VibrationAsync(0, 0, DS4WINDOWS_UDP_PORT);
+            await SendDS4UDP_VibrationAsync(0, 0, DUALSENSEY_V2_UDP_PORT);
         }
 
         /// <summary>

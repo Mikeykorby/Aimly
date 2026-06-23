@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -14,6 +14,28 @@ namespace Aimmy2.Theme
     {
         // Theme changed event
         public static event EventHandler<Color> ThemeChanged;
+
+        // Beta UI state changed event
+        public static event EventHandler<bool>? BetaUIStateChanged;
+
+        public static void SetBetaUIState(bool enabled)
+        {
+            BetaUIStateChanged?.Invoke(null, enabled);
+        }
+
+        // Current Material 3 scheme (regenerated on theme color change)
+        private static Material3Scheme? _currentScheme;
+        public static Material3Scheme? CurrentScheme => _currentScheme;
+
+        /// <summary>
+        /// Regenerates and caches the Material 3 color scheme from the current theme color.
+        /// Call this after changing the theme color or when Beta UI is toggled on.
+        /// </summary>
+        public static Material3Scheme RegenerateMaterial3Scheme()
+        {
+            _currentScheme = GenerateMaterial3Scheme(_themeColor);
+            return _currentScheme.Value;
+        }
 
         // Cached theme colors
         private static Color _themeColor = Color.FromRgb(114, 46, 209);
@@ -686,7 +708,208 @@ namespace Aimmy2.Theme
             return $"#{_themeColor.R:X2}{_themeColor.G:X2}{_themeColor.B:X2}";
         }
 
+        public struct Material3Scheme
+        {
+            public Color Primary, OnPrimary, PrimaryContainer, OnPrimaryContainer;
+            public Color Secondary, OnSecondary, SecondaryContainer, OnSecondaryContainer;
+            public Color Tertiary, OnTertiary, TertiaryContainer, OnTertiaryContainer;
+            public Color Error, OnError, ErrorContainer, OnErrorContainer;
+            public Color Background, OnBackground;
+            public Color Surface, OnSurface;
+            public Color SurfaceVariant, OnSurfaceVariant;
+            public Color SurfaceContainer, SurfaceContainerHigh, SurfaceContainerHighest;
+            public Color SurfaceContainerLow, SurfaceContainerLowest;
+            public Color SurfaceDim, SurfaceBright;
+            public Color Outline, OutlineVariant;
+            public Color InverseSurface, InverseOnSurface, InversePrimary;
+        }
+
+        public static Material3Scheme GenerateMaterial3Scheme(Color seed)
+        {
+            // Ported from reference colorUtils.ts - generates a proper HSL-based tonal palette
+            RgbToHsl(seed, out double h, out double s, out double l);
+            var tonePalette = GenerateTonalPalette(h, s);
+            var neutralPalette = GenerateNeutralPalette(h, s);
+            var neutralVariantPalette = GenerateNeutralVariantPalette(h, s);
+
+            // Secondary: shifted hue +15°, reduced saturation
+            var secondaryPalette = GenerateTonalPalette((h + 15) % 360, s * 0.33);
+            // Tertiary: shifted hue +60°, same saturation
+            var tertiaryPalette = GenerateTonalPalette((h + 60) % 360, s * 0.5);
+
+            var scheme = new Material3Scheme
+            {
+                // Primary
+                Primary = tonePalette[80],
+                OnPrimary = tonePalette[20],
+                PrimaryContainer = tonePalette[30],
+                OnPrimaryContainer = tonePalette[90],
+                // Secondary
+                Secondary = secondaryPalette[80],
+                OnSecondary = secondaryPalette[20],
+                SecondaryContainer = secondaryPalette[30],
+                OnSecondaryContainer = secondaryPalette[90],
+                // Tertiary
+                Tertiary = tertiaryPalette[80],
+                OnTertiary = tertiaryPalette[20],
+                TertiaryContainer = tertiaryPalette[30],
+                OnTertiaryContainer = tertiaryPalette[90],
+                // Surface/Background
+                Background = neutralPalette[6],
+                OnBackground = neutralPalette[90],
+                Surface = neutralPalette[6],
+                OnSurface = neutralPalette[90],
+                SurfaceVariant = neutralVariantPalette[30],
+                OnSurfaceVariant = neutralVariantPalette[80],
+                // Surface dim/bright
+                SurfaceDim = neutralPalette[6],
+                SurfaceBright = neutralPalette[22],
+                // Container hierarchy (low → high)
+                SurfaceContainerLowest = neutralPalette[4],
+                SurfaceContainerLow = neutralPalette[10],
+                SurfaceContainer = neutralPalette[12],
+                SurfaceContainerHigh = neutralPalette[17],
+                SurfaceContainerHighest = neutralPalette[22],
+                // Outline
+                Outline = neutralVariantPalette[60],
+                OutlineVariant = neutralVariantPalette[30],
+                // Inverse
+                InverseSurface = neutralPalette[90],
+                InverseOnSurface = neutralPalette[10],
+                InversePrimary = tonePalette[40],
+                // Error (static)
+                Error = ColorFromHex("#f2b8b5"),
+                OnError = ColorFromHex("#601410"),
+                ErrorContainer = ColorFromHex("#8c1d18"),
+                OnErrorContainer = ColorFromHex("#f9dedc"),
+            };
+
+            _currentScheme = scheme;
+            return scheme;
+        }
+
+        private static Dictionary<int, Color> GenerateTonalPalette(double hue, double saturation)
+        {
+            var tones = new[] { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 100 };
+            var palette = new Dictionary<int, Color>();
+            foreach (var tone in tones)
+            {
+                double l = tone / 100.0;
+                double s = Math.Max(0.04, saturation * (0.7 + (1.0 - Math.Abs(l - 0.5) * 2) * 0.3));
+                if (tone == 0) { s = 0; l = 0; }
+                if (tone == 100) { s = 0; l = 1; }
+                palette[tone] = HslToColor(hue, s * 100, l * 100);
+            }
+            return palette;
+        }
+
+        private static Dictionary<int, Color> GenerateNeutralPalette(double hue, double saturation)
+        {
+            var tones = new[] { 0, 4, 6, 10, 12, 17, 22, 30, 40, 50, 60, 70, 80, 90, 95, 99, 100 };
+            var palette = new Dictionary<int, Color>();
+            foreach (var tone in tones)
+            {
+                double l = tone / 100.0;
+                // Slightly tinted neutrals for M3 Expressive feel
+                double s = Math.Max(0, saturation * 0.06 * (1.0 - Math.Abs(l - 0.5) * 2));
+                if (tone == 0) { s = 0; l = 0; }
+                if (tone == 100) { s = 0; l = 1; }
+                palette[tone] = HslToColor(hue, s, l * 100);
+            }
+            return palette;
+        }
+
+        private static Dictionary<int, Color> GenerateNeutralVariantPalette(double hue, double saturation)
+        {
+            var tones = new[] { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 100 };
+            var palette = new Dictionary<int, Color>();
+            foreach (var tone in tones)
+            {
+                double l = tone / 100.0;
+                double s = Math.Max(0, saturation * 0.08 * (1.0 - Math.Abs(l - 0.5) * 2));
+                if (tone == 0) { s = 0; l = 0; }
+                if (tone == 100) { s = 0; l = 1; }
+                palette[tone] = HslToColor(hue, s, l * 100);
+            }
+            return palette;
+        }
+
+        private static Color ColorFromHex(string hex)
+        {
+            int r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            int g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            int b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            return Color.FromRgb((byte)r, (byte)g, (byte)b);
+        }
+
+        private static void RgbToHsl(Color c, out double h, out double s, out double l)
+        {
+            double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
+            double max = Math.Max(r, Math.Max(g, b));
+            double min = Math.Min(r, Math.Min(g, b));
+            l = (max + min) / 2.0;
+            
+            if (max == min)
+            {
+                h = s = 0;
+                return;
+            }
+
+            double d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+            if (max == r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+            else if (max == g) h = ((b - r) / d + 2) / 6;
+            else h = ((r - g) / d + 4) / 6;
+
+            h *= 360;
+            s *= 100;
+            l *= 100;
+        }
+
+        private static Color HslToColor(double h, double s, double l)
+        {
+            s /= 100; l /= 100; h /= 360;
+            double r, g, b;
+            if (s == 0)
+            {
+                r = g = b = l;
+            }
+            else
+            {
+                double hue2rgb(double p, double q, double t)
+                {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
+                    if (t < 1.0 / 2.0) return q;
+                    if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
+                    return p;
+                }
+                double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                double p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1.0 / 3.0);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1.0 / 3.0);
+            }
+            return Color.FromRgb((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
+        }
+
         #region Private Methods
+
+        public static bool IsLightMode { get; set; } = false;
+
+        public static void ApplyLightMode(bool isLightMode)
+        {
+            IsLightMode = isLightMode;
+            CalculateThemeColors(_themeColor);
+            UpdateAllThemedElements(skipBackground: _isMediaBackground);
+            UpdateWindowBackgrounds();
+            UpdateMainWindowGradients();
+            UpdateDynamicResources();
+        }
+
+
 
         private static void CalculateThemeColors(Color baseColor)
         {
@@ -696,8 +919,16 @@ namespace Aimmy2.Theme
             // Light variant - 20% lighter
             _themeColorLight = LightenColor(baseColor, 0.2);
 
-            // Gradient dark - 70% darker (matches the original #FF120338 darkness level)
-            _themeGradientDark = DarkenColor(baseColor, 0.7);
+            if (IsLightMode)
+            {
+                // Gradient light - 80% lighter
+                _themeGradientDark = LightenColor(baseColor, 0.8);
+            }
+            else
+            {
+                // Gradient dark - 70% darker (matches the original #FF120338 darkness level)
+                _themeGradientDark = DarkenColor(baseColor, 0.7);
+            }
 
             // Transparent variants
             _themeColorTransparent = Color.FromArgb(51, baseColor.R, baseColor.G, baseColor.B); // 20% opacity

@@ -1,4 +1,4 @@
-﻿using AILogic;
+using AILogic;
 using Aimmy2.Class;
 using Class;
 using InputLogic;
@@ -641,11 +641,12 @@ namespace Aimmy2.AILogic
         {
             if (Dictionary.toggleState["Show Detected Player"] && Dictionary.DetectedPlayerOverlay != null)
             {
-                Application.Current.Dispatcher.Invoke(() =>
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (Dictionary.toggleState["Show AI Confidence"])
                     {
                         DetectedPlayerOverlay!.DetectedPlayerConfidence.Opacity = 0;
+                        DetectedPlayerOverlay!.SetTargetConfidence(0, true);
                     }
 
                     if (Dictionary.toggleState["Show Tracers"])
@@ -653,8 +654,13 @@ namespace Aimmy2.AILogic
                         DetectedPlayerOverlay!.DetectedTracers.Opacity = 0;
                     }
 
+                    if (Dictionary.toggleState.TryGetValue("Show Aim Point", out var showAimPoint) && (bool)showAimPoint)
+                    {
+                        DetectedPlayerOverlay!.AimPoint.Opacity = 0;
+                    }
+
                     DetectedPlayerOverlay!.DetectedPlayerFocus.Opacity = 0;
-                });
+                }));
             }
         }
 
@@ -676,12 +682,8 @@ namespace Aimmy2.AILogic
                 if (Dictionary.toggleState["Show AI Confidence"])
                 {
                     DetectedPlayerOverlay.DetectedPlayerConfidence.Opacity = 1;
-                    DetectedPlayerOverlay.DetectedPlayerConfidence.Content = $"{closestPrediction.ClassName}: {Math.Round((AIConf * 100), 2)}%";
-
-                    var labelEstimatedHalfWidth = DetectedPlayerOverlay.DetectedPlayerConfidence.ActualWidth / 2.0;
-                    DetectedPlayerOverlay.DetectedPlayerConfidence.Margin = new Thickness(
-                        centerX - labelEstimatedHalfWidth,
-                        centerY - DetectedPlayerOverlay.DetectedPlayerConfidence.ActualHeight - 2, 0, 0);
+                    DetectedPlayerOverlay.DetectedPlayerConfidence.Text = $"{Math.Round(AIConf, 2)}";
+                    DetectedPlayerOverlay.SetTargetConfidence(AIConf, false);
                 }
                 var showTracers = Dictionary.toggleState["Show Tracers"];
                 DetectedPlayerOverlay.DetectedTracers.Opacity = showTracers ? 1 : 0;
@@ -734,26 +736,32 @@ namespace Aimmy2.AILogic
 
                 DetectedPlayerOverlay.Opacity = Dictionary.sliderSettings["Opacity"];
 
+                Thickness boxMargin = new Thickness(centerX - (LastDetectionBox.Width / 2.0), centerY, 0, 0);
+                
+                Thickness aimPointMargin = new Thickness(0, 0, 0, 0);
+                if (Dictionary.toggleState.TryGetValue("Show Aim Point", out var showAimPoint) && (bool)showAimPoint)
+                {
+                    DetectedPlayerOverlay.AimPoint.Opacity = 1;
+                    
+                    // AimPoint position - Calculate where the mouse is aiming relative to the display
+                    double aimX = detectedX - DisplayManager.ScreenLeft;
+                    double aimY = detectedY - DisplayManager.ScreenTop;
+                    
+                    aimPointMargin = new Thickness((aimX / scalingFactorX) - 3, (aimY / scalingFactorY) - 3, 0, 0);
+                }
+                else
+                {
+                    DetectedPlayerOverlay.AimPoint.Opacity = 0;
+                }
+
+                DetectedPlayerOverlay.SetTargetBox(boxMargin, LastDetectionBox.Width, LastDetectionBox.Height, aimPointMargin);
                 DetectedPlayerOverlay.DetectedPlayerFocus.Opacity = 1;
-                DetectedPlayerOverlay.DetectedPlayerFocus.Margin = new Thickness(
-                    centerX - (LastDetectionBox.Width / 2.0), centerY, 0, 0);
-                DetectedPlayerOverlay.DetectedPlayerFocus.Width = LastDetectionBox.Width;
-                DetectedPlayerOverlay.DetectedPlayerFocus.Height = LastDetectionBox.Height;
             });
         }
 
         private void CalculateCoordinates(DetectedPlayerWindow DetectedPlayerOverlay, Prediction closestPrediction, float scaleX, float scaleY)
         {
             AIConf = closestPrediction.Confidence;
-
-            if (Dictionary.toggleState["Show Detected Player"] && Dictionary.DetectedPlayerOverlay != null)
-            {
-                using (Benchmark("UpdateOverlay"))
-                {
-                    UpdateOverlay(DetectedPlayerOverlay!, closestPrediction);
-                }
-                if (!Dictionary.toggleState["Aim Assist"]) return;
-            }
 
             double YOffset = Dictionary.sliderSettings["Y Offset (Up/Down)"];
             double XOffset = Dictionary.sliderSettings["X Offset (Left/Right)"];
@@ -780,6 +788,16 @@ namespace Aimmy2.AILogic
             {
                 detectedY = CalculateDetectedY(scaleY, YOffset, closestPrediction);
             }
+
+            if (Dictionary.toggleState["Show Detected Player"] && Dictionary.DetectedPlayerOverlay != null)
+            {
+                using (Benchmark("UpdateOverlay"))
+                {
+                    UpdateOverlay(DetectedPlayerOverlay!, closestPrediction);
+                }
+            }
+            
+            if (!Dictionary.toggleState["Aim Assist"]) return;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -792,7 +810,7 @@ namespace Aimmy2.AILogic
             switch (Dictionary.dropdownState["Aiming Boundaries Alignment"])
             {
                 case "Center":
-                    yAdjustment = rect.Height / 2;
+                    yAdjustment = rect.Height / 2f;
                     break;
 
                 case "Top":
@@ -806,6 +824,8 @@ namespace Aimmy2.AILogic
 
             return (int)((yBase + yAdjustment) * scaleY + YOffset);
         }
+
+
 
         private void HandleAim(Prediction closestPrediction)
         {
@@ -985,13 +1005,29 @@ namespace Aimmy2.AILogic
                 // we can honestly replacing linear search by letting sticky aim handle the search
                 using (Benchmark("LinearSearch"))
                 {
+                    bool useHighestConfidence = Dictionary.dropdownState.TryGetValue("Detection Area Type", out var typeObj) 
+                        && typeObj?.ToString() == "Highest Confidence";
+
+                    float bestConfidence = -1f;
+
                     foreach (var p in KDPredictions)
                     {
-                        var dx = p.CenterXTranslated * IMAGE_SIZE - center;
-                        var dy = p.CenterYTranslated * IMAGE_SIZE - center;
-                        double d2 = dx * dx + dy * dy; // dx^2 + dy^2
+                        if (useHighestConfidence)
+                        {
+                            if (p.Confidence > bestConfidence)
+                            {
+                                bestConfidence = p.Confidence;
+                                bestCandidate = p;
+                            }
+                        }
+                        else
+                        {
+                            var dx = p.CenterXTranslated * IMAGE_SIZE - center;
+                            var dy = p.CenterYTranslated * IMAGE_SIZE - center;
+                            double d2 = dx * dx + dy * dy; // dx^2 + dy^2
 
-                        if (d2 < bestDistSq) { bestDistSq = d2; bestCandidate = p; }
+                            if (d2 < bestDistSq) { bestDistSq = d2; bestCandidate = p; }
+                        }
                     }
                 }
 
@@ -1034,17 +1070,32 @@ namespace Aimmy2.AILogic
             float screenCenterX = IMAGE_SIZE / 2f;
             float screenCenterY = IMAGE_SIZE / 2f;
 
-            // STEP 1: Find what the user is aiming at (closest to crosshair)
+            // STEP 1: Find what the user is aiming at (closest to crosshair OR highest confidence)
             Prediction? aimTarget = null;
             float nearestToCrosshairDistSq = float.MaxValue;
+            float highestConfidence = -1f;
+
+            bool useHighestConfidence = Dictionary.dropdownState.TryGetValue("Detection Area Type", out var typeObj) 
+                && typeObj?.ToString() == "Highest Confidence";
 
             foreach (var candidate in KDPredictions)
             {
-                float distSq = GetDistanceSq(candidate.ScreenCenterX, candidate.ScreenCenterY, screenCenterX, screenCenterY);
-                if (distSq < nearestToCrosshairDistSq)
+                if (useHighestConfidence)
                 {
-                    nearestToCrosshairDistSq = distSq;
-                    aimTarget = candidate;
+                    if (candidate.Confidence > highestConfidence)
+                    {
+                        highestConfidence = candidate.Confidence;
+                        aimTarget = candidate;
+                    }
+                }
+                else
+                {
+                    float distSq = GetDistanceSq(candidate.ScreenCenterX, candidate.ScreenCenterY, screenCenterX, screenCenterY);
+                    if (distSq < nearestToCrosshairDistSq)
+                    {
+                        nearestToCrosshairDistSq = distSq;
+                        aimTarget = candidate;
+                    }
                 }
             }
 
@@ -1095,11 +1146,21 @@ namespace Aimmy2.AILogic
             // But we need hysteresis - don't switch on single-frame jitter
             _framesWithoutMatch++;
 
-            // Quick switch if aim target is very close to crosshair (user clearly aiming at it)
+            // Quick switch if aim target is very close to crosshair (user clearly aiming at it) OR if it is much higher confidence
             float stickyThreshold = (float)Dictionary.sliderSettings["Sticky Aim Threshold"];
-            bool aimTargetVeryCentered = nearestToCrosshairDistSq < (stickyThreshold * stickyThreshold * 0.25f);
+            bool shouldQuickSwitch = false;
 
-            if (aimTargetVeryCentered || _framesWithoutMatch >= 3)
+            if (useHighestConfidence)
+            {
+                // Quick switch if the new target has significantly higher confidence
+                shouldQuickSwitch = (aimTarget.Confidence - _currentTarget.Confidence) > 0.2f;
+            }
+            else
+            {
+                shouldQuickSwitch = nearestToCrosshairDistSq < (stickyThreshold * stickyThreshold * 0.25f);
+            }
+
+            if (shouldQuickSwitch || _framesWithoutMatch >= 3)
             {
                 // User has clearly moved to new target - switch
                 return AcquireNewTarget(aimTarget);
@@ -1277,6 +1338,13 @@ namespace Aimmy2.AILogic
 
                 //KDpoints.Add(new double[] { x_center, y_center });
                 KDpredictions.Add(prediction);
+            }
+
+            // Apply maximum detections limit (sort by confidence descending)
+            int maxDetections = (int)Dictionary.sliderSettings["Maximum Detections"];
+            if (KDpredictions.Count > maxDetections)
+            {
+                KDpredictions = KDpredictions.OrderByDescending(p => p.Confidence).Take(maxDetections).ToList();
             }
 
             return KDpredictions;

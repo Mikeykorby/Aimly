@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Aimmy2.Controls.AimMenuControl"
+<UserControl x:Class="Aimmy2.Controls.AimMenuControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -24,10 +24,9 @@
                         Grid.Column="1"
                         Margin="5,0,10,0">
                 <StackPanel x:Name="AimConfig" />
-                <StackPanel x:Name="FOVConfig" />
-                <StackPanel x:Name="ControllerConfig" />
                 <StackPanel x:Name="AntiRecoilConfig" />
                 <StackPanel x:Name="ThemeSettings" />
+                <StackPanel x:Name="FOVConfig" />
             </StackPanel>
         </Grid>
     </ScrollViewer>

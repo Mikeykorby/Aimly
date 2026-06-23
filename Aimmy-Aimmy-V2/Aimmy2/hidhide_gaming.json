@@ -1,0 +1,14 @@
+ [ { "friendlyName" : "Sony Interactive Entertainment DualSense Wireless Controller" , "devices" : [
+{ "present" : true ,
+"gamingDevice" : true ,
+"symbolicLink" : "\\\\?\\hid#{00001124-0000-1000-8000-00805f9b34fb}_vid&0002054c_pid&0ce6#8&ce3c8c5&7&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}" ,
+"vendor" : "Sony Interactive Entertainment" ,
+"product" : "DualSense Wireless Controller" ,
+"serialNumber" : "143a9af68b87" ,
+"usage" : "Gamepad" ,
+"description" : "HID-compliant game controller" ,
+"deviceInstancePath" : "HID\\{00001124-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0ce6\\8&ce3c8c5&7&0000" ,
+"baseContainerDeviceInstancePath" : "BTHENUM\\{00001124-0000-1000-8000-00805F9B34FB}_VID&0002054C_PID&0CE6\\7&39A2164&0&143A9AF68B87_C00000000" ,
+"baseContainerClassGuid" : "{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}" ,
+"baseContainerDeviceCount" : 1 } ] } ] 
+
