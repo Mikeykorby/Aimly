@@ -13,9 +13,7 @@ Unlike most AI-Based Aim Alignment Mechanisms, Aimly utilizes DirectML, ONNX, an
 
 Aimly also provides an easy-to-use user interface, a wide set of features, and customizability options tailored explicitly to community requests. This makes Aimly a great option for anyone who wants to use and tailor an Aim Alignment Mechanism for a specific game without having to code.
 
-Aimly is **100% free to use**. This means no ads, no key system, and no paywalled features. Aimly is not, and will never be, for sale for the end user. It is considered a source-available product, **not open source**, as we actively discourage other developers from making commercial forks of Aimly. 
-
-*Please do not confuse Aimly as an open-source project; we are not, and we have never been one.*
+Aimly is **100% free to use**. This means no ads, no key system, and no paywalled features. Aimly is not, and will never be, for sale for the end user.
 
 * **Discord:** [Join our Server](https://discord.gg/aimmy)
 * **Website:** [aimmy.dev](https://aimmy.dev/)
