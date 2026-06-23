@@ -1,6 +1,6 @@
 
 > [!NOTE]
-> If you enjoy Aimmy, please consider giving us a star ⭐! We appreciate it! :)
+> If you enjoy Aimly, please consider giving us a star ⭐! We appreciate it! :)
   <p>
     <a href="https://aimmy.dev/" target="_blank">
       <img width="100%" src="readme_assets/AimmyV2Banner.png"></a>
