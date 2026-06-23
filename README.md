@@ -18,7 +18,7 @@ Aimly is 100% free to use. This means no ads, no key system, and no paywalled fe
 Please do not confuse Aimly as an open-source project, we are not, and we have never been one.
 
 * **Want to connect with us?** Join our Discord Server: https://discord.gg/JWdpEb9f6Z
-* **If you want to share Aimly with your friends, our website is:** https://aimmy.dev/
+* **If you want to share Aimly with your friends, our website is:** https://aimly.pages.dev/
 
 ---
 
